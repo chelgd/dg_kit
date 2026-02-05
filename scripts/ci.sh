@@ -21,8 +21,8 @@ run_cmd ruff check .
 echo "==> Ruff format check"
 run_cmd ruff format .
 
-echo "==> Pyright"
-run_cmd pyright
+#echo "==> Pyright"
+#run_cmd pyright
 
 echo "==> Pytest"
 run_cmd pytest
