@@ -4,10 +4,7 @@ from dataclasses import dataclass, field
 from typing import Tuple
 
 from dg_kit.base.dataclasses import id_generator
-from dg_kit.base.dataclasses.business_information import (
-    Team,
-    Document
-)
+from dg_kit.base.dataclasses.business_information import Team, Document
 
 
 @dataclass(frozen=True, slots=True)
@@ -16,7 +13,7 @@ class EntityIdentifier:
     natural_key: str
     name: str
     is_pk: bool
-    entity_id : str
+    entity_id: str
     used_attributes_ids: Tuple[str]
 
     def __post_init__(self) -> None:

@@ -4,6 +4,4 @@ from __future__ import annotations
 from abc import ABC
 
 
-
-class DataCatalog(ABC):
-    ...
+class DataCatalog(ABC): ...

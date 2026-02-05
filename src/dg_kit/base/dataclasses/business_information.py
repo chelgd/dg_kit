@@ -1,6 +1,7 @@
-'''
+"""
 Docstring for dg_kit.base.dataclasses.business_information
-'''
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

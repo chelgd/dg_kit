@@ -2,11 +2,7 @@ from __future__ import annotations
 from typing import Mapping, List
 
 
-from dg_kit.base.dataclasses.logical_model import (
-    Entity,
-    Attribute,
-    Relation
-)
+from dg_kit.base.dataclasses.logical_model import Entity, Attribute, Relation
 
 
 class LogicalModel:
@@ -21,7 +17,6 @@ class LogicalModel:
         self.all_units_by_natural_key: Mapping[str, Entity | Attribute | Relation] = {}
         self.pm_objects_nks_used: set = set()
 
-
     def register_entity(self, entity: Entity) -> None:
         self.entities[entity.id] = entity
         self.all_units_by_id[entity.id] = entity
@@ -29,7 +24,6 @@ class LogicalModel:
 
         for nk in entity.pm_map:
             self.pm_objects_nks_used.add(nk)
-    
 
     def register_attribute(self, attribute: Attribute) -> None:
         self.attributes[attribute.id] = attribute
@@ -38,7 +32,6 @@ class LogicalModel:
 
         for nk in attribute.pm_map:
             self.pm_objects_nks_used.add(nk)
-    
 
     def register_relation(self, relation: Relation) -> None:
         self.relations[relation.id] = relation

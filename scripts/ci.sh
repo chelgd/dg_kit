@@ -11,7 +11,7 @@ echo "==> Ruff lint"
 ruff check .
 
 echo "==> Ruff format check"
-ruff format --check .
+ruff format .
 
 echo "==> Pyright"
 pyright

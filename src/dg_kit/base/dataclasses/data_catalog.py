@@ -19,9 +19,7 @@ class DataCatalogRow:
     last_edited_time: Optional[datetime] = None
     created_time: Optional[datetime] = None
 
-
-    def __post_init__(self) -> None:
-        ...
+    def __post_init__(self) -> None: ...
 
 
 @dataclass(frozen=True, slots=True)

@@ -7,9 +7,7 @@ from typing import List
 import yaml
 
 from dg_kit.base.physical_model import PhysicalModel
-from dg_kit.base.dataclasses.physical_model import (
-    Table, Column, Layer
-) 
+from dg_kit.base.dataclasses.physical_model import Table, Column, Layer
 
 
 _REF_RE = re.compile(
@@ -39,7 +37,6 @@ class DBTParser:
                 f"Expected 'models' folder in dbt project, but not found: {str(self.models_path)}"
             )
 
-
         self.dbt_project_yml_path = self.dbt_project_path / "dbt_project.yml"
 
         if not self.dbt_project_yml_path.is_file():
@@ -53,7 +50,6 @@ class DBTParser:
         self.PM = PhysicalModel(version)
         self.PM.all_tables_by_name = {}
 
-
     def _parse_source_model_yml(self, source_yml_path: Path) -> None:
         raw = source_yml_path.read_text(encoding="utf-8")
         doc = yaml.safe_load(raw) or {}
@@ -66,14 +62,14 @@ class DBTParser:
             source_name = source["name"]
 
             # 1) Layer for the source
-            layer_nk = source_name          
+            layer_nk = source_name
             layer_obj = Layer(
                 natural_key=layer_nk,
                 name=source_name,
                 is_landing=True,
             )
 
-            #if layer_nk not in self.PM.all_units_by_natural_key:
+            # if layer_nk not in self.PM.all_units_by_natural_key:
             self.PM.register_layer(layer_obj)
 
             for table in source["tables"]:
@@ -85,12 +81,12 @@ class DBTParser:
                     name=table["name"],
                 )
 
-                #if table_nk not in self.PM.all_units_by_natural_key:
+                # if table_nk not in self.PM.all_units_by_natural_key:
                 self.PM.register_table(table_obj)
                 self.PM.all_tables_by_name[table["name"]] = table_obj
 
                 # 3) Columns
-                for column in table['columns']:
+                for column in table["columns"]:
                     col_name = column["name"]
                     data_type = column["data_type"]
                     description = column["description"]
@@ -108,7 +104,6 @@ class DBTParser:
                     if col_nk not in self.PM.all_units_by_natural_key:
                         self.PM.register_column(col_obj)
 
-
     def _parse_model_yml(self, model_yml_path: Path, layer_id: str) -> None:
         raw = model_yml_path.read_text(encoding="utf-8")
         doc = yaml.safe_load(raw)
@@ -116,11 +111,10 @@ class DBTParser:
         models = doc["models"]
 
         for model in models:
-
             model_name = model["name"].strip()
 
             # 1) Ensure table exists
-            table_nk = self.PM.all_units_by_id[layer_id].name + '.' + model_name 
+            table_nk = self.PM.all_units_by_id[layer_id].name + "." + model_name
 
             table_obj = Table(
                 natural_key=table_nk,
@@ -128,7 +122,6 @@ class DBTParser:
                 name=model_name,
             )
 
-            
             self.PM.register_table(table_obj)
             self.PM.all_tables_by_name[model_name] = table_obj
 
@@ -153,7 +146,6 @@ class DBTParser:
                 if column_nk not in self.PM.all_units_by_natural_key:
                     self.PM.register_column(col_obj)
 
-
     def _parse_model_sql(self, model_name: str, model_sql_path: Path) -> List[str]:
         """
         Return dependency natural_keys found in SQL via ref()/source().
@@ -167,8 +159,9 @@ class DBTParser:
             dep_nk = f"{a}.{b}" if b else a
             table_obj = self.PM.all_units_by_natural_key.get(dep_nk)
             if table_obj:
-                self.PM.register_dependency(self.PM.all_tables_by_name[model_name], table_obj)
-        
+                self.PM.register_dependency(
+                    self.PM.all_tables_by_name[model_name], table_obj
+                )
 
         for m in _SOURCE_RE.finditer(text):
             src = m.group("src")
@@ -176,20 +169,19 @@ class DBTParser:
             dep_nk = f"{src}.{tbl}"
             table_obj = self.PM.all_units_by_natural_key.get(dep_nk)
             if table_obj:
-                self.PM.register_dependency(self.PM.all_tables_by_name[model_name], table_obj)
-
+                self.PM.register_dependency(
+                    self.PM.all_tables_by_name[model_name], table_obj
+                )
 
     def parse_pm(self) -> PhysicalModel:
         # 1) parse source definitions
         for source_yml_path in self.models_path.glob("*.yml"):
             self._parse_source_model_yml(source_yml_path)
 
-        for project in self.dbt_project_conf['models']:
-            for layer_name in self.dbt_project_conf['models'][project]:
+        for project in self.dbt_project_conf["models"]:
+            for layer_name in self.dbt_project_conf["models"][project]:
                 layer_obj = Layer(
-                    natural_key=layer_name,
-                    name=layer_name,
-                    is_landing=False
+                    natural_key=layer_name, name=layer_name, is_landing=False
                 )
 
                 self.PM.register_layer(layer_obj)
@@ -202,6 +194,5 @@ class DBTParser:
         # 2) SQL second
         for sql_path in self.models_path.rglob("*.sql"):
             self._parse_model_sql(sql_path.stem, sql_path)
-
 
         return self.PM
