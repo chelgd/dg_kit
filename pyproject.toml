@@ -29,3 +29,7 @@ dev = [
 test = [
     "pytest>=9.0.2",
 ]
+
+[tool.uv.build]
+package-dir = "src"
+packages = ["dg_kit"]
