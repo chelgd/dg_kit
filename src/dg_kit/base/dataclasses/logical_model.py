@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Tuple, Tuple
+from typing import Tuple
 
 from dg_kit.base.dataclasses import id_generator
 from dg_kit.base.dataclasses.business_information import (
@@ -30,10 +30,10 @@ class Relation:
     name: str
     domain: str
     description: str
-    pm_map: str
+    pm_map: Tuple[str]
     master_source_systems: Tuple[str]
-    responsible_parties: Tuple[str]
-    documents: Tuple[str]
+    responsible_parties: Tuple[Team]
+    documents: Tuple[Document]
     source_entity_id: str
     target_entity_id: str
     optional_source: bool
@@ -54,14 +54,13 @@ class Attribute:
     name: str
     domain: str
     description: str
-    data_type: str
     sensitivity_type: str
-    pm_map: str
-    master_source_systems: Tuple[str]
-    responsible_parties: Tuple[str]
-    documents: Tuple[str]
-    entity_id: str
     data_type: str
+    pm_map: Tuple[str]
+    master_source_systems: Tuple[str]
+    responsible_parties: Tuple[Team]
+    documents: Tuple[Document]
+    entity_id: str
     created_by: str = None
     created_time: str = None
 
@@ -77,7 +76,7 @@ class Entity:
     domain: str
     description: str
     identifiers: Tuple[EntityIdentifier]
-    attributes: Tuple[Attribute]
+    attributes: Tuple[str]
     pm_map: Tuple[str]
     master_source_systems: Tuple[str]
     responsible_parties: Tuple[Team]

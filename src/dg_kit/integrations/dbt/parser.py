@@ -78,7 +78,7 @@ class DBTParser:
 
             for table in source["tables"]:
                 # 2) Table
-                table_nk = f"{source_name}.{table["name"]}"
+                table_nk = f"{source_name}.{table['name']}"
                 table_obj = Table(
                     natural_key=table_nk,
                     layer_id=layer_obj.id,

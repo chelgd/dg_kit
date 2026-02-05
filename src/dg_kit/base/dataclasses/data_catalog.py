@@ -7,7 +7,8 @@ from datetime import datetime
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-from dg_kit.base.dataclasses.business_information import Document
+from dg_kit.base.enums import DataUnitType
+from dg_kit.base.dataclasses.business_information import Document, Team
 from dg_kit.base.dataclasses.logical_model import (
     Relation,
     EntityIdentifier
@@ -17,7 +18,7 @@ from dg_kit.base.dataclasses.logical_model import (
 @dataclass(frozen=True, slots=True)
 class DataCatalogRow:
     data_unit_name: str
-    data_unit_type: str
+    data_unit_type: DataUnitType
     domain: str
     data_unit_uuid: str
     last_edited_time: Optional[datetime] = None
@@ -33,7 +34,7 @@ class EntityTypeDataUnitPageInfo:
     data_unit_type: str
     description: str
     linked_documents: Tuple[Document]
-    responsible_parties: Tuple[str]
+    responsible_parties: Tuple[Team]
     master_source_systems: Tuple[str]
     core_layer_mapping: Tuple[str]
     pk_attributes_page_ids: Tuple[str]
@@ -48,8 +49,8 @@ class AttributeTypeDataUnitPageInfo:
     description: str
     data_type: str
     sensitivity_type: str
-    linked_documents: Tuple[str]
-    responsible_parties: Tuple[str]
+    linked_documents: Tuple[Document]
+    responsible_parties: Tuple[Team]
     core_layer_mapping: Tuple[str]
     master_source_systems: Tuple[str]
 
@@ -58,8 +59,8 @@ class AttributeTypeDataUnitPageInfo:
 class RelationTypeDataUnitPageInfo:
     data_unit_type: str
     description: str
-    linked_documents: Tuple[str]
-    responsible_parties: Tuple[str]
+    linked_documents: Tuple[Document]
+    responsible_parties: Tuple[Team]
     core_layer_mapping: Tuple[str]
     master_source_systems: Tuple[str]
     source_entity_page_id: str

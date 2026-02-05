@@ -57,7 +57,7 @@ class LogicalModel:
         for nk in relation.pm_map:
             self.pm_objects_nks_used.add(nk)
 
-    def register_dependency(self, dependent: str, dependency: str) -> None:
+    def register_dependency(self, dependent: Entity, dependency: Attribute) -> None:
         if dependent.id in self.dependencies:
             self.dependencies[dependent.id].add(dependency.id)
         else:
