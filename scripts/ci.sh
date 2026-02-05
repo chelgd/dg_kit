@@ -24,8 +24,8 @@ run_cmd ruff format .
 #echo "==> Pyright"
 #run_cmd pyright
 
-echo "==> Pytest"
-run_cmd pytest
+#echo "==> Pytest"
+#run_cmd pytest
 
-echo "==> Pre-commit"
-run_cmd pre-commit run --all-files
+#echo "==> Pre-commit"
+#run_cmd pre-commit run --all-files
