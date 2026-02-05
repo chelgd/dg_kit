@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Set
+from typing import List
 
 import yaml
 
@@ -159,8 +159,6 @@ class DBTParser:
         Return dependency natural_keys found in SQL via ref()/source().
         """
         text = model_sql_path.read_text(encoding="utf-8")
-
-        deps: Set[str] = set()
 
         for m in _REF_RE.finditer(text):
             a = m.group("a")

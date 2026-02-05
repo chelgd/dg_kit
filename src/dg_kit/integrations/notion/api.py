@@ -1,8 +1,7 @@
 from __future__ import annotations
-from typing import Optional, Sequence, TypedDict, Any, Mapping, Dict, Tuple
+from typing import Optional, Dict
 
 from notion_client import Client
-from notion_client.errors import APIResponseError
 
 from dg_kit.base.data_catalog import DataCatalog
 from dg_kit.base.dataclasses.data_catalog import (

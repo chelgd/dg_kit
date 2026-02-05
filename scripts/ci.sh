@@ -4,6 +4,9 @@ set -euo pipefail
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root_dir"
 
+echo "==> Ruff autofix"
+ruff check --fix .
+
 echo "==> Ruff lint"
 ruff check .
 

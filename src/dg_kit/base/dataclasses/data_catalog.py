@@ -1,18 +1,13 @@
 from __future__ import annotations
 
-from typing import Any, Mapping, NewType, Optional, Set, Tuple
+from typing import Optional, Tuple
 
 from datetime import datetime
 
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 from dg_kit.base.enums import DataUnitType
 from dg_kit.base.dataclasses.business_information import Document, Team
-from dg_kit.base.dataclasses.logical_model import (
-    Relation,
-    EntityIdentifier
-)
 
 
 @dataclass(frozen=True, slots=True)

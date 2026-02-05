@@ -17,7 +17,6 @@ from dg_kit.base.dataclasses.logical_model import (
 
 from dg_kit.base.business_information import BusinessInformation
 from dg_kit.base.dataclasses.business_information import (
-    SlackChannelUrl,
     Contact,
     Team,
     Email,
