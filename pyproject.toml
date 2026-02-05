@@ -5,7 +5,7 @@ build-backend = "uv_build"
 [project]
 name = "dg_kit"
 version = "0.1.0"
-description = "Add your description here"
+description = "Data Governance Kit provides programmatic access to data governance metadata with integrations for different Logical and Physical Modeling tools."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
@@ -21,7 +21,7 @@ dbt = [
 
 [dependency-groups]
 dev = [
-    "black>=26.1.0",
+    "pre-commit>=4.5.1",
     "pyright>=1.1.408",
     "pytest>=9.0.2",
     "ruff>=0.15.0",
