@@ -35,7 +35,7 @@ class NotionDataCatalog(DataCatalog):
         self.rows_by_id: Dict[str, DataCatalogRow] = {}
         self.rows_by_name: Dict[str, DataCatalogRow] = {}
         self.rows_by_page_id: Dict[str, DataCatalogRow] = {}
-        self.page_id_by_uuid: Dict[str, DataCatalogRow] = {}
+        self.page_id_by_uuid: Dict[str, str] = {}
         self.pull()
 
     def _properties_from_row(self, row: DataCatalogRow) -> dict:
@@ -350,7 +350,7 @@ class NotionDataCatalog(DataCatalog):
 
         return blocks
 
-    def pull(self, limit: int = None) -> list[DataCatalogRow]:
+    def pull(self, limit: Optional[int] = None) -> list[DataCatalogRow]:
         start_cursor: Optional[str] = None
         fetched = 0
 

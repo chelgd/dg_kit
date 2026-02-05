@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Mapping, List
+from typing import Dict, List
 
 
 from dg_kit.base.dataclasses.logical_model import Entity, Attribute, Relation
@@ -8,14 +8,15 @@ from dg_kit.base.dataclasses.logical_model import Entity, Attribute, Relation
 class LogicalModel:
     def __init__(self, version: str):
         self.version = version
-        self.entities: Mapping[str, Entity] = {}
-        self.attributes: Mapping[str, Attribute] = {}
+        self.entities: Dict[str, Entity] = {}
+        self.attributes: Dict[str, Attribute] = {}
         self.dependencies: dict[str, set[str]] = {}
-        self.relations: Mapping[str, Relation] = {}
-        self.relations_ids_by_entity_id: Mapping[str, List[Relation]] = {}
-        self.all_units_by_id: Mapping[str, Entity | Attribute | Relation] = {}
-        self.all_units_by_natural_key: Mapping[str, Entity | Attribute | Relation] = {}
-        self.pm_objects_nks_used: set = set()
+        self.relations: Dict[str, Relation] = {}
+        self.relations_ids_by_entity_id: Dict[str, List[Relation]] = {}
+        self.all_units_by_id: Dict[str, Entity | Attribute | Relation] = {}
+        self.all_units_by_natural_key: Dict[str, Entity | Attribute | Relation] = {}
+        self.pm_objects_nks_used: set[str] = set()
+        self.all_lm_units_by_odm_id: Dict[str, Entity | Attribute | Relation] = {}
 
     def register_entity(self, entity: Entity) -> None:
         self.entities[entity.id] = entity
@@ -59,7 +60,7 @@ class LogicalModel:
 
 class LogicalModelsDatabase:
     def __init__(self):
-        self.logical_models: Mapping[str, LogicalModel] = {}
+        self.logical_models: Dict[str, LogicalModel] = {}
 
     def register_logical_model(self, logical_model: LogicalModel) -> None:
         self.logical_models[logical_model.version] = logical_model

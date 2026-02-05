@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import List
 
 import yaml
 
@@ -18,6 +17,12 @@ _SOURCE_RE = re.compile(
     r"""source\(\s*(['"])(?P<src>[^'"]+)\1\s*,\s*(['"])(?P<table>[^'"]+)\3\s*\)""",
     re.IGNORECASE,
 )
+
+
+class DBTPhysicalModel(PhysicalModel):
+    def __init__(self, version: str):
+        super().__init__(version)
+        self.all_tables_by_name: dict[str, Table] = {}
 
 
 class DBTParser:
@@ -47,8 +52,7 @@ class DBTParser:
         dbt_project_raw_yml = self.dbt_project_yml_path.read_text(encoding="utf-8")
         self.dbt_project_conf = yaml.safe_load(dbt_project_raw_yml)
 
-        self.PM = PhysicalModel(version)
-        self.PM.all_tables_by_name = {}
+        self.PM = DBTPhysicalModel(version)
 
     def _parse_source_model_yml(self, source_yml_path: Path) -> None:
         raw = source_yml_path.read_text(encoding="utf-8")
@@ -146,9 +150,9 @@ class DBTParser:
                 if column_nk not in self.PM.all_units_by_natural_key:
                     self.PM.register_column(col_obj)
 
-    def _parse_model_sql(self, model_name: str, model_sql_path: Path) -> List[str]:
+    def _parse_model_sql(self, model_name: str, model_sql_path: Path) -> None:
         """
-        Return dependency natural_keys found in SQL via ref()/source().
+        Register dependency natural_keys found in SQL via ref()/source().
         """
         text = model_sql_path.read_text(encoding="utf-8")
 
@@ -158,7 +162,7 @@ class DBTParser:
             # ref('model') or ref('package', 'model')
             dep_nk = f"{a}.{b}" if b else a
             table_obj = self.PM.all_units_by_natural_key.get(dep_nk)
-            if table_obj:
+            if isinstance(table_obj, Table):
                 self.PM.register_dependency(
                     self.PM.all_tables_by_name[model_name], table_obj
                 )
@@ -168,7 +172,7 @@ class DBTParser:
             tbl = m.group("table")
             dep_nk = f"{src}.{tbl}"
             table_obj = self.PM.all_units_by_natural_key.get(dep_nk)
-            if table_obj:
+            if isinstance(table_obj, Table):
                 self.PM.register_dependency(
                     self.PM.all_tables_by_name[model_name], table_obj
                 )

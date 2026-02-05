@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Mapping
+from typing import Dict
 
 from dg_kit.base.dataclasses.physical_model import (
     Table,
@@ -12,12 +12,12 @@ from dg_kit.base.dataclasses.physical_model import (
 class PhysicalModel:
     def __init__(self, version):
         self.version = version
-        self.layers: Mapping[str, Layer] = {}
-        self.tables: Mapping[str, Table] = {}
-        self.columns: Mapping[str, Column] = {}
+        self.layers: Dict[str, Layer] = {}
+        self.tables: Dict[str, Table] = {}
+        self.columns: Dict[str, Column] = {}
         self.dependencies: dict[str, set[str]] = {}
-        self.all_units_by_id: Mapping[str, Layer | Table | Column] = {}
-        self.all_units_by_natural_key: Mapping[str, Layer | Table | Column] = {}
+        self.all_units_by_id: Dict[str, Layer | Table | Column] = {}
+        self.all_units_by_natural_key: Dict[str, Layer | Table | Column] = {}
 
     def register_layer(self, layer: Layer):
         self.layers[layer.id] = layer

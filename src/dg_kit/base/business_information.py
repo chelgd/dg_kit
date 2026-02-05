@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Mapping
+from typing import Dict
 
 
 from dg_kit.base.dataclasses.business_information import (
@@ -14,13 +14,13 @@ from dg_kit.base.dataclasses.business_information import (
 class BusinessInformation:
     def __init__(self, version: str):
         self.version = version
-        self.teams: Mapping[str, Team] = {}
-        self.contacts: Mapping[str, Contact] = {}
-        self.documents: Mapping[str, Document] = {}
-        self.emails: Mapping[str, Email] = {}
-        self.urls: Mapping[str, Url] = {}
-        self.all_units_by_id: Mapping[str, Team | Contact | Document | Email | Url] = {}
-        self.all_units_by_natural_key: Mapping[
+        self.teams: Dict[str, Team] = {}
+        self.contacts: Dict[str, Contact] = {}
+        self.documents: Dict[str, Document] = {}
+        self.emails: Dict[str, Email] = {}
+        self.urls: Dict[str, Url] = {}
+        self.all_units_by_id: Dict[str, Team | Contact | Document | Email | Url] = {}
+        self.all_units_by_natural_key: Dict[
             str, Team | Contact | Document | Email | Url
         ] = {}
 
@@ -52,7 +52,7 @@ class BusinessInformation:
 
 class BusinessInformationDatabase:
     def __init__(self):
-        self.business_information: Mapping[str, BusinessInformation] = {}
+        self.business_information: Dict[str, BusinessInformation] = {}
 
     def register_business_information(
         self, business_information: BusinessInformation

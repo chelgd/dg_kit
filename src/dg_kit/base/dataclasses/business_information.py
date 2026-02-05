@@ -5,7 +5,7 @@ Docstring for dg_kit.base.dataclasses.business_information
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Tuple
+from typing import Optional, Tuple
 
 from dg_kit.base.dataclasses import id_generator
 
@@ -15,7 +15,7 @@ class SlackChannelUrl:
     id: str = field(init=False)
     natural_key: str
     name: str
-    url: str
+    url: Optional[str]
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "id", id_generator(self.natural_key))
@@ -26,7 +26,7 @@ class Email:
     id: str = field(init=False)
     natural_key: str
     name: str
-    email_address: str
+    email_address: Optional[str]
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "id", id_generator(self.natural_key))
@@ -37,7 +37,7 @@ class Url:
     id: str = field(init=False)
     natural_key: str
     name: str
-    url: str
+    url: Optional[str]
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "id", id_generator(self.natural_key))
@@ -48,8 +48,8 @@ class Contact:
     id: str = field(init=False)
     natural_key: str
     name: str
-    emails: Tuple[Email]
-    urls: Tuple[SlackChannelUrl]
+    emails: Tuple[Email, ...]
+    urls: Tuple[Url, ...]
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "id", id_generator(self.natural_key))
@@ -60,7 +60,7 @@ class Team:
     id: str = field(init=False)
     natural_key: str
     name: str
-    contacts: Tuple[Contact]
+    contacts: Tuple[Contact, ...]
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "id", id_generator(self.natural_key))
@@ -71,7 +71,7 @@ class Document:
     id: str = field(init=False)
     natural_key: str
     name: str
-    reference: str
+    reference: Optional[str]
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "id", id_generator(self.natural_key))
