@@ -10,12 +10,16 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "Chelidze Georgii", email = "chelidze.georgii.d@gmail.com" }]
-dependencies = [
-  "pyyaml>=6.0.3",
-]
 
 [project.optional-dependencies]
-dev = [
-  "notion-client>=2.7.0",
-  "pytest>=9.0.2"
+notion = [
+    "notion-client>=2.7.0",
+]
+dbt = [
+    "pyyaml>=6.0.3",
+]
+
+[dependency-groups]
+test = [
+    "pytest>=9.0.2",
 ]
