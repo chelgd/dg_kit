@@ -154,7 +154,7 @@ class DBTParser:
                     self.PM.register_column(col_obj)
 
 
-    def _parse_model_sql(self, model_sql_path: Path) -> List[str]:
+    def _parse_model_sql(self, model_name: str, model_sql_path: Path) -> List[str]:
         """
         Return dependency natural_keys found in SQL via ref()/source().
         """
@@ -166,14 +166,19 @@ class DBTParser:
             a = m.group("a")
             b = m.group("b")
             # ref('model') or ref('package', 'model')
-            deps.add(f"{a}.{b}" if b else a)
+            dep_nk = f"{a}.{b}" if b else a
+            table_obj = self.PM.all_units_by_natural_key.get(dep_nk)
+            if table_obj:
+                self.PM.register_dependency(self.PM.all_tables_by_name[model_name], table_obj)
+        
 
         for m in _SOURCE_RE.finditer(text):
             src = m.group("src")
             tbl = m.group("table")
-            deps.add(f"{src}.{tbl}")
-
-        return deps
+            dep_nk = f"{src}.{tbl}"
+            table_obj = self.PM.all_units_by_natural_key.get(dep_nk)
+            if table_obj:
+                self.PM.register_dependency(self.PM.all_tables_by_name[model_name], table_obj)
 
 
     def parse_pm(self) -> PhysicalModel:
@@ -198,11 +203,7 @@ class DBTParser:
 
         # 2) SQL second
         for sql_path in self.models_path.rglob("*.sql"):
-            model_name = sql_path.stem  
-            dep_nks = self._parse_model_sql(sql_path)
-            for i in dep_nks:
-                table_obj = self.PM.all_units_by_natural_key.get(i)
-                if table_obj:
-                    self.PM.register_dependency(self.PM.all_tables_by_name[model_name], table_obj)
+            self._parse_model_sql(sql_path.stem, sql_path)
+
 
         return self.PM
