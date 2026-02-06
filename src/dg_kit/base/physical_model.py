@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict
+from typing import Dict, List
 
 from dg_kit.base.dataclasses.physical_model import (
     Table,
@@ -15,7 +15,7 @@ class PhysicalModel:
         self.layers: Dict[str, Layer] = {}
         self.tables: Dict[str, Table] = {}
         self.columns: Dict[str, Column] = {}
-        self.dependencies: dict[str, set[str]] = {}
+        self.dependencies: Dict[str, List[str]] = {}
         self.all_units_by_id: Dict[str, Layer | Table | Column] = {}
         self.all_units_by_natural_key: Dict[str, Layer | Table | Column] = {}
 
@@ -36,6 +36,6 @@ class PhysicalModel:
 
     def register_dependency(self, dependent: Table, dependency: Table) -> None:
         if dependent.id in self.dependencies:
-            self.dependencies[dependent.id].add(dependency.id)
+            self.dependencies[dependent.id].append(dependency.id)
         else:
-            self.dependencies[dependent.id] = {dependency.id}
+            self.dependencies[dependent.id] = [dependency.id]

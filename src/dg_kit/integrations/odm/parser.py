@@ -27,6 +27,19 @@ from dg_kit.base.dataclasses.business_information import (
 from dg_kit.integrations.odm.attr_types import ODMAttributeTypesMapping
 
 
+class ODMLogicalModel(LogicalModel):
+    def __init__(self, version: str):
+        super().__init__(version)
+        self.all_lm_units_by_odm_id: dict[str, Entity | Attribute | Relation] = {}
+        self.odm_refered_atrs_by_uuid: dict[str, str] = {}
+
+
+class ODMBusinessInformation(BusinessInformation):
+    def __init__(self, version: str):
+        super().__init__(version)
+        self.all_bi_units_by_odm_id: dict[str, Contact | Team | Email | Url | Document] = {}
+
+
 class ODMParser:
     def __init__(self, odm_project_path: Path):
         if not isinstance(odm_project_path, Path):
@@ -61,11 +74,9 @@ class ODMParser:
         self.urls_path = self.business_information_path / "url"
         self.parties_path = self.business_information_path / "party"
 
-        self.LM = LogicalModel(self.model_name)
-        self.BI = BusinessInformation(self.model_name)
-
-        self.LM.all_lm_units_by_odm_id = {}
-        self.BI.all_bi_units_by_odm_id = {}
+        self.LM = ODMLogicalModel(self.model_name)
+        self.BI = ODMBusinessInformation(self.model_name)
+    
 
     def _parse_responsible_parties(self, elem: ET.Element) -> Optional[Set[str]]:
         parties = tuple(
@@ -138,37 +149,6 @@ class ODMParser:
             props[name] = value
 
         return props
-
-    def _parse_entity_identifiers(
-        self, entity_id, elem: ET.Element
-    ) -> Tuple[EntityIdentifier]:
-        identifiers: Set[EntityIdentifier] = set()
-
-        for ident in elem.findall("./identifiers/identifier"):
-            ident_id = ident.attrib.get("id")
-            if not ident_id:
-                continue
-
-            name = ident.attrib.get("name")
-
-            pk_txt = ident.findtext("./pk")
-            is_pk = pk_txt == "true"
-
-            used_attributes_ids = tuple(
-                [a.text for a in ident.findall("./usedAttributes/attributeRef")]
-            )
-
-            entity_identifier = EntityIdentifier(
-                natural_key=ident_id,
-                name=name,
-                is_pk=is_pk,
-                entity_id=entity_id,
-                used_attributes_ids=used_attributes_ids,
-            )
-
-            identifiers.add(entity_identifier)
-
-        return tuple(identifiers)
 
     def parse_bi(self) -> BusinessInformation:
         # Documents
@@ -267,17 +247,13 @@ class ODMParser:
         return self.BI
 
     def parse_lm(self) -> LogicalModel:
-        dependencies = {}
+        dependencies_by_entity_id = {}
+        identifier_xml_by_entity_id = {}
         for seg in self.entites_path.iterdir():
             for entity_xml in seg.iterdir():
                 xml_root = ET.parse(entity_xml).getroot()
 
-                entity_id = xml_root.attrib["id"]
-
                 entity_dynamic_props = self._parse_dynamic_properties(xml_root)
-                entity_identifiers = self._parse_entity_identifiers(
-                    xml_root.attrib["id"], xml_root
-                )
 
                 entity_responsible_parties = tuple(
                     self._parse_responsible_parties(xml_root)
@@ -285,64 +261,6 @@ class ODMParser:
 
                 entity_domain = entity_dynamic_props.get("domain")
 
-                entity_linked_attribute_ids = []
-                entity_attributes_xml = xml_root.findall("./attributes/Attribute")
-                for attr_xml in entity_attributes_xml:
-                    attribute_dynamic_props = self._parse_dynamic_properties(attr_xml)
-                    attribute_responsible_parties = (
-                        tuple(self._parse_responsible_parties(attr_xml))
-                        or entity_responsible_parties
-                    )
-
-                    referenced_attribute_id = attr_xml.findtext("./referedAttribute")
-                    if referenced_attribute_id:
-                        if entity_id in dependencies:
-                            dependencies[entity_id].append(referenced_attribute_id)
-                        else:
-                            dependencies[entity_id] = [referenced_attribute_id]
-                        continue
-
-                    attr_pm_map_str = attribute_dynamic_props.get("pm_map")
-                    attr_pm_map_tuple = (
-                        tuple(attr_pm_map_str.split(",")) if attr_pm_map_str else ()
-                    )
-
-                    attr_master_source_systems_str = attribute_dynamic_props.get(
-                        "master_source_systems"
-                    )
-                    attr_master_source_systems_tuple = (
-                        tuple(attr_master_source_systems_str.split(","))
-                        if attr_master_source_systems_str
-                        else ()
-                    )
-
-                    attribute = Attribute(
-                        natural_key=attr_xml.attrib["name"],
-                        entity_id=entity_id,
-                        name=attr_xml.attrib.get("name", ""),
-                        data_type=ODMAttributeTypesMapping.get(
-                            attr_xml.findtext("./logicalDatatype"),
-                            "type missing in mapping",
-                        ),
-                        sensitivity_type=(
-                            attr_xml.findtext("./sensitiveType") or "Not sensitive"
-                        ),
-                        description=(attr_xml.findtext("./comment") or ""),
-                        documents=self._parse_documents(attr_xml),
-                        pm_map=attr_pm_map_tuple,
-                        domain=attribute_dynamic_props.get("domain", entity_domain),
-                        master_source_systems=attr_master_source_systems_tuple,
-                        responsible_parties=attribute_responsible_parties,
-                        created_by=(attr_xml.findtext("./createdBy") or "").strip()
-                        or None,
-                        created_time=self._parse_dt_utc(
-                            (attr_xml.findtext("./createdTime") or "").strip()
-                        ),
-                    )
-
-                    self.LM.register_attribute(attribute)
-                    entity_linked_attribute_ids.append(attribute.id)
-                    self.LM.all_lm_units_by_odm_id[attr_xml.attrib["id"]] = attribute
 
                 entity_pm_map_str = entity_dynamic_props.get("pm_map")
                 entity_pm_map_tuple = (
@@ -361,11 +279,7 @@ class ODMParser:
                 entity = Entity(
                     natural_key=xml_root.attrib["name"],
                     name=xml_root.attrib["name"],
-                    description=xml_root.findtext("comment")
-                    if xml_root.findtext("comment") is not None
-                    else "",
-                    identifiers=entity_identifiers,
-                    attributes=tuple(entity_linked_attribute_ids),
+                    description=xml_root.findtext("comment") if xml_root.findtext("comment") else "",
                     responsible_parties=entity_responsible_parties,
                     documents=self._parse_documents(xml_root),
                     pm_map=entity_pm_map_tuple,
@@ -376,7 +290,74 @@ class ODMParser:
                 )
 
                 self.LM.register_entity(entity)
-                self.LM.all_lm_units_by_odm_id[entity_id] = entity
+                self.LM.all_lm_units_by_odm_id[xml_root.attrib["id"]] = entity
+
+
+                entity_attributes_xml = xml_root.findall("./attributes/Attribute")
+                for attr_xml in entity_attributes_xml:
+                    attribute_dynamic_props = self._parse_dynamic_properties(attr_xml)
+                    attribute_responsible_parties = (
+                        tuple(self._parse_responsible_parties(attr_xml))
+                        or entity_responsible_parties
+                    )
+
+                    referenced_attribute_odm_id = attr_xml.findtext("./referedAttribute")
+                    if referenced_attribute_odm_id:
+                        if entity.id in dependencies_by_entity_id:
+                            dependencies_by_entity_id[entity.id].append(referenced_attribute_odm_id)
+                        else:
+                            dependencies_by_entity_id[entity.id] = [referenced_attribute_odm_id]
+                        self.LM.odm_refered_atrs_by_uuid[attr_xml.attrib["id"]] = referenced_attribute_odm_id
+                        continue
+
+                    attr_pm_map_str = attribute_dynamic_props.get("pm_map")
+                    attr_pm_map_tuple = (
+                        tuple(attr_pm_map_str.split(",")) if attr_pm_map_str else tuple()
+                    )
+
+                    attr_master_source_systems_str = attribute_dynamic_props.get(
+                        "master_source_systems"
+                    )
+                    attr_master_source_systems_tuple = (
+                        tuple(attr_master_source_systems_str.split(","))
+                        if attr_master_source_systems_str
+                        else tuple()
+                    )
+
+                    attribute = Attribute(
+                        natural_key=attr_xml.attrib["name"],
+                        entity_id=entity.id,
+                        name=attr_xml.attrib.get("name", ""),
+                        data_type=ODMAttributeTypesMapping.get(
+                            attr_xml.findtext("./logicalDatatype"),
+                            "type missing in mapping",
+                        ),
+                        sensitivity_type=(
+                            attr_xml.findtext("./sensitiveType") or "Not sensitive"
+                        ),
+                        description=(attr_xml.findtext("./comment") or ""),
+                        documents=self._parse_documents(attr_xml),
+                        pm_map=attr_pm_map_tuple,
+                        domain=attribute_dynamic_props.get("domain", entity_domain),
+                        master_source_systems=attr_master_source_systems_tuple,
+                        responsible_parties=attribute_responsible_parties,
+                        created_by=attr_xml.findtext("./createdBy") or None,
+                        created_time=self._parse_dt_utc(
+                            attr_xml.findtext("./createdTime") or ""
+                        ),
+                    )
+
+                    self.LM.register_attribute(attribute)
+                    self.LM.all_lm_units_by_odm_id[attr_xml.attrib["id"]] = attribute
+
+
+
+                for ident_xml in xml_root.findall("./identifiers/identifier"):
+                    if entity.id in identifier_xml_by_entity_id:
+                        identifier_xml_by_entity_id[entity.id].append(ident_xml)
+                    else:
+                        identifier_xml_by_entity_id[entity.id] = [ident_xml]
+
 
         for seg in self.relations_path.iterdir():
             for relation_xml in seg.iterdir():
@@ -404,6 +385,12 @@ class ODMParser:
 
                 relation = Relation(
                     natural_key=xml_root.attrib["name"],
+                    source_entity_id=self.LM.all_lm_units_by_odm_id[
+                        xml_root.findtext("sourceEntity")
+                    ].id,
+                    target_entity_id=self.LM.all_lm_units_by_odm_id[
+                        xml_root.findtext("targetEntity")
+                    ].id,
                     name=xml_root.attrib["name"],
                     domain=relation_dynamic_props.get("domain"),
                     description=xml_root.findtext("comment")
@@ -413,12 +400,6 @@ class ODMParser:
                     master_source_systems=relation_dynamic_props_tuple,
                     responsible_parties=relation_responsible_parties,
                     documents=self._parse_documents(xml_root),
-                    source_entity_id=self.LM.all_lm_units_by_odm_id[
-                        xml_root.findtext("sourceEntity")
-                    ].id,
-                    target_entity_id=self.LM.all_lm_units_by_odm_id[
-                        xml_root.findtext("targetEntity")
-                    ].id,
                     optional_source=xml_root.findtext("optionalSource"),
                     optional_target=xml_root.findtext("optionalTarget"),
                     source_cardinality=xml_root.findtext("sourceCardinality"),
@@ -431,16 +412,50 @@ class ODMParser:
                 self.LM.all_lm_units_by_odm_id[xml_root.attrib["id"]] = relation
 
         for (
-            dependent_entity_odm_id,
+            dependent_entity_id,
             list_of_referenced_attributes,
-        ) in dependencies.items():
+        ) in dependencies_by_entity_id.items():
             for attribute_odm_id in list_of_referenced_attributes:
+                
                 self.LM.register_dependency(
-                    self.LM.all_lm_units_by_odm_id[dependent_entity_odm_id],
+                    self.LM.all_units_by_id[dependent_entity_id],
                     self.LM.all_units_by_id[
                         self.LM.all_lm_units_by_odm_id[attribute_odm_id].id
                     ],
                 )
+
+        for (
+            entity_id,
+            list_of_identifier_xml,
+        ) in identifier_xml_by_entity_id.items():
+            for ident_xml in list_of_identifier_xml:
+                name = ident_xml.attrib.get("name")
+                pk_txt = ident_xml.findtext("./pk")
+                is_pk = pk_txt == "true"
+
+                used_attributes = []
+
+                for attr_elem in ident_xml.findall("./usedAttributes/attributeRef"):
+                    if attr_elem.text in self.LM.odm_refered_atrs_by_uuid:
+                        used_attr_id = self.LM.odm_refered_atrs_by_uuid[attr_elem.text]
+                        used_attributes.append(
+                            self.LM.all_lm_units_by_odm_id[used_attr_id]
+                        )
+                    else:
+                        used_attributes.append(
+                            self.LM.all_lm_units_by_odm_id[attr_elem.text]
+                        )
+                        
+
+                entity_identifier = EntityIdentifier(
+                    natural_key=name,
+                    name=name,
+                    is_pk=is_pk,
+                    entity_id=entity_id,
+                    attributes=used_attributes,
+                )
+
+                self.LM.register_identifier(entity_identifier)
 
         return self.LM
 
