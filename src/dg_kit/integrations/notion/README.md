@@ -19,8 +19,10 @@ catalog = NotionDataCatalog(
     dc_table_id="data_source_id",
 )
 
-rows = catalog.pull()
-print(len(rows))
+catalog.pull_data_catalog()
+row = catalog.get_row_by_id("data-unit-id")
+page = catalog.get_page_by_id("data-unit-id")
+print(row, page)
 ```
 
 ## Properties Expected
@@ -33,6 +35,8 @@ By default, the Notion database should contain the following properties:
 Property names can be overridden when constructing `NotionDataCatalog`.
 
 ## Notes
-- `update_page_by_uuid` rewrites page blocks to reflect the latest entity/attribute/relation details.
-- `update_properties_by_uuid` updates the Notion properties only.
-- `add_data_unit` creates a new page if the external UUID does not exist.
+- `pull_data_catalog` reads the Notion data source and parses page bodies into `Entity`, `Attribute`, and `Relation`.
+- `update_page_by_id` rewrites page blocks to reflect the latest entity/attribute/relation details.
+- `update_row_by_id` updates the Notion properties only.
+- `add_row` creates a new page if the external UUID does not exist.
+- Parsing logic lives in `src/dg_kit/integrations/notion/parser.py`.

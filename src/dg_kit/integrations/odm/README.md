@@ -8,7 +8,7 @@ This integration is useful for extracting governance metadata from ODM and using
 
 ## Requirements
 - Oracle Data Modeler project in `.dmd` format
-- The `.dmd` file must sit next to a folder with the same base name that contains the exported assets (ODM’s standard structure)
+- The `.dmd` file must sit next to a folder with the same base name that contains the exported assets (ODM standard structure)
 
 Expected layout:
 ```
@@ -20,9 +20,11 @@ MyModel/
 
 ## Usage
 ```python
-from dg_kit.integrations.odm.parser import LMParser
+from dg_kit.base.physical_model import PhysicalModel
+from dg_kit.integrations.odm.parser import ODMParser
 
-parser = LMParser("path/to/MyModel.dmd")
+pm = PhysicalModel("v1")
+parser = ODMParser("path/to/MyModel.dmd", PM=pm)
 
 bi = parser.parse_bi()
 lm = parser.parse_lm()
@@ -33,9 +35,13 @@ print(lm.version, len(lm.entities))
 ## Versioned Projects
 If you keep multiple `.dmd` files in a folder (one per version), use `ODMVersionedProjectParser`:
 ```python
+from dg_kit.base.physical_model import PhysicalModel
 from dg_kit.integrations.odm.parser import ODMVersionedProjectParser
 
+pm = PhysicalModel("v1")
 parser = ODMVersionedProjectParser("path/to/odm_versions_folder")
+parser.parse_version("MyModel", PM=pm)
+
 model = parser.get_model("MyModel")
 bi = parser.get_bi("MyModel")
 ```
