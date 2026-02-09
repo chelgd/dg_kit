@@ -20,9 +20,9 @@ MyModel/
 
 ## Usage
 ```python
-from dg_kit.integrations.odm.parser import ODMParser
+from dg_kit.integrations.odm.parser import LMParser
 
-parser = ODMParser("path/to/MyModel.dmd")
+parser = LMParser("path/to/MyModel.dmd")
 
 bi = parser.parse_bi()
 lm = parser.parse_lm()
@@ -43,4 +43,4 @@ bi = parser.get_bi("MyModel")
 ## Notes
 - Business information includes documents, contacts, teams, emails, and URLs extracted from ODM.
 - Logical model entities, attributes, and relations are built from ODM XML assets.
-- Dynamic ODM properties are used for fields like `domain`, `pm_map`, and `master_source_systems`.
+- Dynamic ODM properties are used for fields like `domain`, `pm_map`, and `source_systems`.

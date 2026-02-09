@@ -3,7 +3,7 @@ from enum import StrEnum
 
 class ConventionRuleSeverity(StrEnum):
     INFO = "info"
-    WARN = "warning"
+    WARNING = "warning"
     ERROR = "error"
 
 

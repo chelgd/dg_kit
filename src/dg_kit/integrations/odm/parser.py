@@ -2,11 +2,18 @@ from datetime import datetime
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
-from typing import Mapping, Optional, Set, Tuple
+from typing import Optional, Set, Dict
 
 from dg_kit.base.logical_model import LogicalModelsDatabase
 from dg_kit.base.business_information import BusinessInformationDatabase
 
+from dg_kit.base.dataclasses import id_generator
+
+from dg_kit.base.physical_model import PhysicalModel
+from dg_kit.base.dataclasses.physical_model import (
+    Table,
+    Column,
+)
 from dg_kit.base.logical_model import LogicalModel
 from dg_kit.base.dataclasses.logical_model import (
     EntityIdentifier,
@@ -24,6 +31,7 @@ from dg_kit.base.dataclasses.business_information import (
     Document,
 )
 
+
 from dg_kit.integrations.odm.attr_types import ODMAttributeTypesMapping
 
 
@@ -37,11 +45,13 @@ class ODMLogicalModel(LogicalModel):
 class ODMBusinessInformation(BusinessInformation):
     def __init__(self, version: str):
         super().__init__(version)
-        self.all_bi_units_by_odm_id: dict[str, Contact | Team | Email | Url | Document] = {}
+        self.all_bi_units_by_odm_id: dict[
+            str, Contact | Team | Email | Url | Document
+        ] = {}
 
 
 class ODMParser:
-    def __init__(self, odm_project_path: Path):
+    def __init__(self, odm_project_path: Path, PM: PhysicalModel):
         if not isinstance(odm_project_path, Path):
             odm_project_path = Path(odm_project_path)
         if not odm_project_path.is_file() and not odm_project_path.name.endswith(
@@ -76,7 +86,14 @@ class ODMParser:
 
         self.LM = ODMLogicalModel(self.model_name)
         self.BI = ODMBusinessInformation(self.model_name)
-    
+
+        self.PM = PM
+        self.all_pm_objects_by_nk: Dict[str, Table | Column] = {}
+        for table_obj in PM.tables.values():
+            self.all_pm_objects_by_nk[table_obj.natural_key] = table_obj
+
+        for column_obj in PM.columns.values():
+            self.all_pm_objects_by_nk[column_obj.natural_key] = column_obj
 
     def _parse_responsible_parties(self, elem: ET.Element) -> Optional[Set[str]]:
         parties = tuple(
@@ -261,37 +278,39 @@ class ODMParser:
 
                 entity_domain = entity_dynamic_props.get("domain")
 
-
                 entity_pm_map_str = entity_dynamic_props.get("pm_map")
                 entity_pm_map_tuple = (
                     entity_pm_map_str.split(",") if entity_pm_map_str else tuple()
                 )
+                if entity_pm_map_tuple:
+                    entity_pm_map_tuple = tuple(
+                        self.all_pm_objects_by_nk[nk] for nk in entity_pm_map_tuple
+                    )
 
-                entity_master_source_systems_str = entity_dynamic_props.get(
-                    "master_source_systems"
-                )
-                entity_master_source_systems_tuple = (
-                    entity_master_source_systems_str.split(",")
-                    if entity_master_source_systems_str
+                entity_source_systems_str = entity_dynamic_props.get("source_systems")
+                entity_source_systems_tuple = (
+                    entity_source_systems_str.split(",")
+                    if entity_source_systems_str
                     else tuple()
                 )
 
                 entity = Entity(
-                    natural_key=xml_root.attrib["name"],
+                    id=id_generator(xml_root.attrib["name"]),
                     name=xml_root.attrib["name"],
-                    description=xml_root.findtext("comment") if xml_root.findtext("comment") else "",
+                    description=xml_root.findtext("comment")
+                    if xml_root.findtext("comment")
+                    else "",
                     responsible_parties=entity_responsible_parties,
                     documents=self._parse_documents(xml_root),
                     pm_map=entity_pm_map_tuple,
                     domain=entity_domain,
-                    master_source_systems=entity_master_source_systems_tuple,
+                    source_systems=entity_source_systems_tuple,
                     created_by=None,
                     created_time=None,
                 )
 
                 self.LM.register_entity(entity)
                 self.LM.all_lm_units_by_odm_id[xml_root.attrib["id"]] = entity
-
 
                 entity_attributes_xml = xml_root.findall("./attributes/Attribute")
                 for attr_xml in entity_attributes_xml:
@@ -301,31 +320,51 @@ class ODMParser:
                         or entity_responsible_parties
                     )
 
-                    referenced_attribute_odm_id = attr_xml.findtext("./referedAttribute")
+                    referenced_attribute_odm_id = attr_xml.findtext(
+                        "./referedAttribute"
+                    )
                     if referenced_attribute_odm_id:
                         if entity.id in dependencies_by_entity_id:
-                            dependencies_by_entity_id[entity.id].append(referenced_attribute_odm_id)
+                            dependencies_by_entity_id[entity.id].append(
+                                referenced_attribute_odm_id
+                            )
                         else:
-                            dependencies_by_entity_id[entity.id] = [referenced_attribute_odm_id]
-                        self.LM.odm_refered_atrs_by_uuid[attr_xml.attrib["id"]] = referenced_attribute_odm_id
+                            dependencies_by_entity_id[entity.id] = [
+                                referenced_attribute_odm_id
+                            ]
+                        self.LM.odm_refered_atrs_by_uuid[attr_xml.attrib["id"]] = (
+                            referenced_attribute_odm_id
+                        )
                         continue
 
                     attr_pm_map_str = attribute_dynamic_props.get("pm_map")
                     attr_pm_map_tuple = (
-                        tuple(attr_pm_map_str.split(",")) if attr_pm_map_str else tuple()
+                        tuple(attr_pm_map_str.split(","))
+                        if attr_pm_map_str
+                        else tuple()
                     )
+                    if attr_pm_map_tuple:
+                        try:
+                            attr_pm_map_tuple = tuple(
+                                self.all_pm_objects_by_nk[nk]
+                                for nk in attr_pm_map_tuple
+                            )
+                        except KeyError as e:
+                            raise ValueError(
+                                f"ODM logical model has unknown Physical Model mapping for attribute '{attr_xml.attrib['name']}' in entity '{entity.name}': {e}"
+                            )
 
-                    attr_master_source_systems_str = attribute_dynamic_props.get(
-                        "master_source_systems"
+                    attr_source_systems_str = attribute_dynamic_props.get(
+                        "source_systems"
                     )
-                    attr_master_source_systems_tuple = (
-                        tuple(attr_master_source_systems_str.split(","))
-                        if attr_master_source_systems_str
+                    attr_source_systems_tuple = (
+                        tuple(attr_source_systems_str.split(","))
+                        if attr_source_systems_str
                         else tuple()
                     )
 
                     attribute = Attribute(
-                        natural_key=attr_xml.attrib["name"],
+                        id=id_generator(attr_xml.attrib["name"]),
                         entity_id=entity.id,
                         name=attr_xml.attrib.get("name", ""),
                         data_type=ODMAttributeTypesMapping.get(
@@ -339,7 +378,7 @@ class ODMParser:
                         documents=self._parse_documents(attr_xml),
                         pm_map=attr_pm_map_tuple,
                         domain=attribute_dynamic_props.get("domain", entity_domain),
-                        master_source_systems=attr_master_source_systems_tuple,
+                        source_systems=attr_source_systems_tuple,
                         responsible_parties=attribute_responsible_parties,
                         created_by=attr_xml.findtext("./createdBy") or None,
                         created_time=self._parse_dt_utc(
@@ -350,14 +389,11 @@ class ODMParser:
                     self.LM.register_attribute(attribute)
                     self.LM.all_lm_units_by_odm_id[attr_xml.attrib["id"]] = attribute
 
-
-
                 for ident_xml in xml_root.findall("./identifiers/identifier"):
                     if entity.id in identifier_xml_by_entity_id:
                         identifier_xml_by_entity_id[entity.id].append(ident_xml)
                     else:
                         identifier_xml_by_entity_id[entity.id] = [ident_xml]
-
 
         for seg in self.relations_path.iterdir():
             for relation_xml in seg.iterdir():
@@ -373,9 +409,13 @@ class ODMParser:
                 relation_pm_map_tuple = (
                     relation_pm_map_str.split(",") if relation_pm_map_str else tuple()
                 )
+                if relation_pm_map_tuple:
+                    relation_pm_map_tuple = tuple(
+                        self.all_pm_objects_by_nk[nk] for nk in relation_pm_map_tuple
+                    )
 
                 relation_dynamic_props_str = relation_dynamic_props.get(
-                    "master_source_systems"
+                    "source_systems"
                 )
                 relation_dynamic_props_tuple = (
                     relation_dynamic_props_str.split(",")
@@ -384,7 +424,7 @@ class ODMParser:
                 )
 
                 relation = Relation(
-                    natural_key=xml_root.attrib["name"],
+                    id=id_generator(xml_root.attrib["name"]),
                     source_entity_id=self.LM.all_lm_units_by_odm_id[
                         xml_root.findtext("sourceEntity")
                     ].id,
@@ -397,7 +437,7 @@ class ODMParser:
                     if xml_root.findtext("comment") is not None
                     else "",
                     pm_map=relation_pm_map_tuple,
-                    master_source_systems=relation_dynamic_props_tuple,
+                    source_systems=relation_dynamic_props_tuple,
                     responsible_parties=relation_responsible_parties,
                     documents=self._parse_documents(xml_root),
                     optional_source=xml_root.findtext("optionalSource"),
@@ -416,7 +456,6 @@ class ODMParser:
             list_of_referenced_attributes,
         ) in dependencies_by_entity_id.items():
             for attribute_odm_id in list_of_referenced_attributes:
-                
                 self.LM.register_dependency(
                     self.LM.all_units_by_id[dependent_entity_id],
                     self.LM.all_units_by_id[
@@ -445,10 +484,9 @@ class ODMParser:
                         used_attributes.append(
                             self.LM.all_lm_units_by_odm_id[attr_elem.text]
                         )
-                        
 
                 entity_identifier = EntityIdentifier(
-                    natural_key=name,
+                    id=id_generator(name),
                     name=name,
                     is_pk=is_pk,
                     entity_id=entity_id,
@@ -471,35 +509,35 @@ class ODMVersionedProjectParser:
 
         self.odm_project_path = odm_project_path
 
-        self.odm_projects_paths = []
+        self.odm_versions_paths = []
         dmd_files = list(self.odm_project_path.glob("*.dmd"))
         if dmd_files:
             for dmd_file in dmd_files:
-                self.odm_projects_paths.append(dmd_file)
+                self.odm_versions_paths.append(dmd_file)
 
         self.LMDatabse = LogicalModelsDatabase()
         self.BIDatabase = BusinessInformationDatabase()
 
-        self.parse_project()
+    def parse_version(self, version: str, PM: PhysicalModel) -> None:
+        odm_version_path = None
+        for path in self.odm_versions_paths:
+            if version in str(path):
+                odm_version_path = path
+                break
 
-    def parse_project(self) -> Mapping[str, LogicalModel]:
-        for model_path in self.odm_projects_paths:
-            parser = ODMParser(model_path)
-            bi = parser.parse_bi()
-            self.BIDatabase.register_business_information(bi)
-            lm = parser.parse_lm()
-            self.LMDatabse.register_logical_model(lm)
+        if not odm_version_path:
+            raise ValueError(f"Version {version} not found in ODM project paths.")
 
-        return None
+        parser = ODMParser(odm_version_path, PM)
 
-    def get_model(self, model_name: str) -> LogicalModel:
-        if model_name not in self.LMDatabse.logical_models:
-            raise KeyError(f"Logical Model '{model_name}' not found in ODM database")
+        bi = parser.parse_bi()
+        self.BIDatabase.register_business_information(bi)
 
-        return self.LMDatabse.logical_models[model_name]
+        lm = parser.parse_lm()
+        self.LMDatabse.register_logical_model(lm)
 
-    def get_bi(self, bi_name: str) -> BusinessInformation:
-        if bi_name not in self.BIDatabase.business_information:
-            raise KeyError(f"BusinessInformation '{bi_name}' not found in ODM database")
+    def get_model(self, version: str) -> LogicalModel:
+        return self.LMDatabse.logical_models[version]
 
-        return self.BIDatabase.business_information[bi_name]
+    def get_bi(self, version: str) -> BusinessInformation:
+        return self.BIDatabase.business_information[version]
