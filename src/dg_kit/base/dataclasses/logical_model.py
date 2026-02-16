@@ -11,6 +11,7 @@ from dg_kit.base.dataclasses.physical_model import Column, Table
 @dataclass(frozen=True, slots=True)
 class Entity:
     id: str
+    nk: str
     name: str
     domain: Optional[str]
     description: str
@@ -25,6 +26,7 @@ class Entity:
 @dataclass(frozen=True, slots=True)
 class Attribute:
     id: str
+    nk: str
     entity_id: str
     name: str
     domain: Optional[str]
@@ -42,6 +44,7 @@ class Attribute:
 @dataclass(frozen=True, slots=True)
 class EntityIdentifier:
     id: str
+    nk: str
     entity_id: str
     name: Optional[str]
     is_pk: bool
@@ -51,6 +54,7 @@ class EntityIdentifier:
 @dataclass(frozen=True, slots=True)
 class Relation:
     id: str
+    nk: str
     source_entity_id: str
     target_entity_id: str
     name: str

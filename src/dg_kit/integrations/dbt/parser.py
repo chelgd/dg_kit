@@ -77,7 +77,7 @@ class DBTParser:
             layer_nk = source_name
             layer_obj = Layer(
                 id=id_generator(layer_nk),
-                natural_key=layer_nk,
+                nk=layer_nk,
                 name=source_name,
                 is_landing=True,
             )
@@ -89,7 +89,7 @@ class DBTParser:
                 table_nk = f"{source_name}.{table['name']}"
                 table_obj = Table(
                     id=id_generator(table_nk),
-                    natural_key=table_nk,
+                    nk=table_nk,
                     layer_id=layer_obj.id,
                     name=table["name"],
                 )
@@ -106,7 +106,7 @@ class DBTParser:
 
                     col_obj = Column(
                         id=id_generator(col_nk),
-                        natural_key=col_nk,
+                        nk=col_nk,
                         layer_id=layer_obj.id,
                         table_id=table_obj.id,
                         name=str(col_name),
@@ -131,7 +131,7 @@ class DBTParser:
 
             table_obj = Table(
                 id=id_generator(table_nk),
-                natural_key=table_nk,
+                nk=table_nk,
                 layer_id=layer_id,
                 name=model_name,
             )
@@ -151,7 +151,7 @@ class DBTParser:
 
                 col_obj = Column(
                     id=id_generator(column_nk),
-                    natural_key=column_nk,
+                    nk=column_nk,
                     layer_id=layer_id,
                     table_id=table_obj.id,
                     name=column_name,
@@ -176,7 +176,7 @@ class DBTParser:
 
             table_obj = Table(
                 id=id_generator(table_nk),
-                natural_key=table_nk,
+                nk=table_nk,
                 layer_id=layer_id,
                 name=seed_name,
             )
@@ -196,7 +196,7 @@ class DBTParser:
 
                 col_obj = Column(
                     id=id_generator(column_nk),
-                    natural_key=column_nk,
+                    nk=column_nk,
                     layer_id=layer_id,
                     table_id=table_obj.id,
                     name=column_name,
@@ -211,7 +211,7 @@ class DBTParser:
         self, model_name: str, model_sql_path: Path, layer_name: str
     ) -> None:
         """
-        Register dependency natural_keys found in SQL via ref()/source().
+        Register dependency nks found in SQL via ref()/source().
         """
         text = model_sql_path.read_text(encoding="utf-8")
 
@@ -242,7 +242,7 @@ class DBTParser:
 
         layer_obj = Layer(
             id=id_generator(self.default_schema),
-            natural_key=self.default_schema,
+            nk=self.default_schema,
             name=self.default_schema,
             is_landing=False,
         )
@@ -256,7 +256,7 @@ class DBTParser:
             for layer_name in self.dbt_project_conf["models"][project]:
                 layer_obj = Layer(
                     id=id_generator(layer_name),
-                    natural_key=layer_name,
+                    nk=layer_name,
                     name=layer_name,
                     is_landing=False,
                 )

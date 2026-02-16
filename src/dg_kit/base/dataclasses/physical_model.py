@@ -4,7 +4,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True, slots=True)
 class Layer:
     id: str
-    natural_key: str
+    nk: str
     name: str
     is_landing: bool
 
@@ -12,7 +12,7 @@ class Layer:
 @dataclass(frozen=True, slots=True)
 class Table:
     id: str
-    natural_key: str
+    nk: str
     layer_id: str
     name: str
 
@@ -20,7 +20,7 @@ class Table:
 @dataclass(frozen=True, slots=True)
 class Column:
     id: str
-    natural_key: str
+    nk: str
     layer_id: str
     table_id: str
     name: str

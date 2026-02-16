@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, List
 
+from dg_kit.base import add_value_to_indexed_list
 from dg_kit.base.dataclasses.physical_model import (
     Table,
     Column,
@@ -31,11 +32,7 @@ class PhysicalModel:
         self.all_units_by_id[column.id] = column
 
     def register_dependency(self, dependent: Table, dependency: Table) -> None:
-        if dependent.id in self.dependencies:
-            self.dependencies[dependent.id].append(dependency.id)
-        else:
-            self.dependencies[dependent.id] = [dependency.id]
-
+        add_value_to_indexed_list(self.dependencies, dependent.id, dependency.id)
 
 class PhysicalModelsDatabase:
     def __init__(self):

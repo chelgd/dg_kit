@@ -15,7 +15,7 @@ from dg_kit.base.dataclasses.convention import (
 class Convention:
     def __init__(self, name: str):
         self.name = name
-        self._rules: List[ConventionRule] = []
+        self.rules: List[ConventionRule] = []
 
     def rule(
         self,
@@ -23,15 +23,11 @@ class Convention:
         severity: ConventionRuleSeverity,
         description: str,
     ):
-        def decorator(fn: ConventionRuleFn) -> ConventionRuleFn:
-            self._rules.append(ConventionRule(name, severity, description, fn))
+        def rule_registry(fn: ConventionRuleFn) -> ConventionRuleFn:
+            self.rules.append(ConventionRule(name, severity, description, fn))
             return fn
 
-        return decorator
-
-    @property
-    def rules(self) -> List[ConventionRule]:
-        return list(self._rules)
+        return rule_registry
 
 
 class ConventionValidator:
@@ -50,7 +46,7 @@ class ConventionValidator:
                     severity=rule.severity,
                     message=issue.message,
                     unit_id=issue.unit_id,
-                    unit_natural_key=issue.unit_natural_key,
+                    unit_nk=issue.unit_nk,
                 )
                 issues.append(issue)
 

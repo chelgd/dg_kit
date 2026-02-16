@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Dict, List
 
-
+from dg_kit.base import add_value_to_indexed_list
 from dg_kit.base.dataclasses.logical_model import (
     EntityIdentifier,
     Entity,
@@ -37,48 +37,26 @@ class LogicalModel:
         self.attributes[attribute.id] = attribute
         self.all_units_by_id[attribute.id] = attribute
 
-        if attribute.entity_id in self.attributes_by_entity_id:
-            self.attributes_by_entity_id[attribute.entity_id].append(attribute)
-        else:
-            self.attributes_by_entity_id[attribute.entity_id] = [attribute]
-
+        add_value_to_indexed_list(self.attributes_by_entity_id, attribute.entity_id, attribute)
+        
         for pm_obj in attribute.pm_map:
-            if attribute.id in self.pm_objects_by_lm_id:
-                self.pm_objects_by_lm_id[attribute.id].append(pm_obj)
-            else:
-                self.pm_objects_by_lm_id[attribute.id] = [pm_obj]
-
+            add_value_to_indexed_list(self.pm_objects_by_lm_id, attribute.id, pm_obj)
+        
     def register_relation(self, relation: Relation) -> None:
         self.relations[relation.id] = relation
         self.all_units_by_id[relation.id] = relation
 
-        if relation.source_entity_id in self.relations_by_entity_id:
-            self.relations_by_entity_id[relation.source_entity_id].append(relation)
-        else:
-            self.relations_by_entity_id[relation.source_entity_id] = [relation]
-
-        if relation.target_entity_id in self.relations_by_entity_id:
-            self.relations_by_entity_id[relation.target_entity_id].append(relation)
-        else:
-            self.relations_by_entity_id[relation.target_entity_id] = [relation]
+        add_value_to_indexed_list(self.relations_by_entity_id, relation.source_entity_id, relation)
+        add_value_to_indexed_list(self.relations_by_entity_id, relation.target_entity_id, relation)
 
         for pm_obj in relation.pm_map:
-            if relation.id in self.pm_objects_by_lm_id:
-                self.pm_objects_by_lm_id[relation.id].append(pm_obj)
-            else:
-                self.pm_objects_by_lm_id[relation.id] = [pm_obj]
+            add_value_to_indexed_list(self.pm_objects_by_lm_id, relation.id, pm_obj)
 
     def register_dependency(self, dependent: Entity, dependency: Attribute) -> None:
-        if dependent.id in self.dependencies:
-            self.dependencies[dependent.id].append(dependency.id)
-        else:
-            self.dependencies[dependent.id] = [dependency.id]
+        add_value_to_indexed_list(self.dependencies, dependent.id, dependency.id)
 
     def register_identifier(self, identifier: EntityIdentifier) -> None:
-        if identifier.entity_id in self.identifiers_by_entity_id:
-            self.identifiers_by_entity_id[identifier.entity_id].append(identifier)
-        else:
-            self.identifiers_by_entity_id[identifier.entity_id] = [identifier]
+        add_value_to_indexed_list(self.identifiers_by_entity_id, identifier.entity_id, identifier)
 
 
 class LogicalModelsDatabase:

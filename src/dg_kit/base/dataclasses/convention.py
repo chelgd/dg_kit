@@ -13,7 +13,7 @@ class ConventionBreach:
     severity: ConventionRuleSeverity
     message: str
     unit_id: Optional[str] = None
-    unit_natural_key: Optional[str] = None
+    unit_nk: Optional[str] = None
 
 
 class ConventionRuleFn(Protocol):

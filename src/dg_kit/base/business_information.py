@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import Dict
 
-
 from dg_kit.base.dataclasses.business_information import (
     Team,
     Contact,

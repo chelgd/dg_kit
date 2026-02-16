@@ -2,7 +2,7 @@ from datetime import datetime
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
-from typing import Optional, Set, Dict
+from typing import Optional, Set, Dict, Tuple
 
 from dg_kit.base.logical_model import LogicalModelsDatabase
 from dg_kit.base.business_information import BusinessInformationDatabase
@@ -90,12 +90,12 @@ class ODMParser:
         self.PM = PM
         self.all_pm_objects_by_nk: Dict[str, Table | Column] = {}
         for table_obj in PM.tables.values():
-            self.all_pm_objects_by_nk[table_obj.natural_key] = table_obj
+            self.all_pm_objects_by_nk[table_obj.nk] = table_obj
 
         for column_obj in PM.columns.values():
-            self.all_pm_objects_by_nk[column_obj.natural_key] = column_obj
+            self.all_pm_objects_by_nk[column_obj.nk] = column_obj
 
-    def _parse_responsible_parties(self, elem: ET.Element) -> Optional[Set[str]]:
+    def _parse_responsible_parties(self, elem: ET.Element) -> Optional[Tuple[Team, ...]]:
         parties = tuple(
             [
                 self.BI.all_bi_units_by_odm_id[p.text]
@@ -104,7 +104,7 @@ class ODMParser:
         )
         return parties or tuple()
 
-    def _parse_documents(self, elem: ET.Element) -> Optional[Set[str]]:
+    def _parse_documents(self, elem: ET.Element) -> Optional[Tuple[Document, ...]]:
         docs_elem = elem.find("./documents")
 
         if docs_elem is None:
@@ -176,7 +176,8 @@ class ODMParser:
                 document_dynamic_props = self._parse_dynamic_properties(xml_root)
 
                 document = Document(
-                    natural_key=xml_root.attrib["name"],
+                    id=id_generator(xml_root.attrib["name"]),
+                    nk=xml_root.attrib["name"],
                     name=xml_root.attrib["name"],
                     reference=document_dynamic_props.get("reference"),
                 )
@@ -190,7 +191,8 @@ class ODMParser:
                 xml_root = ET.parse(email_xml).getroot()
 
                 email = Email(
-                    natural_key=xml_root.attrib["name"],
+                    id=id_generator(xml_root.attrib["name"]),
+                    nk=xml_root.attrib["name"],
                     name=xml_root.attrib["name"],
                     email_address=xml_root.findtext("emailAddress"),
                 )
@@ -204,7 +206,8 @@ class ODMParser:
                 xml_root = ET.parse(url_xml).getroot()
 
                 url = Url(
-                    natural_key=xml_root.attrib["name"],
+                    id=id_generator(xml_root.attrib["name"]),
+                    nk=xml_root.attrib["name"],
                     name=xml_root.attrib["name"],
                     url=xml_root.findtext("url"),
                 )
@@ -231,7 +234,8 @@ class ODMParser:
                 )
 
                 contact = Contact(
-                    natural_key=xml_root.attrib["name"],
+                    id=id_generator(xml_root.attrib["name"]),
+                    nk=xml_root.attrib["name"],
                     name=xml_root.attrib["name"],
                     emails=emails if emails else tuple(),
                     urls=urls if urls else tuple(),
@@ -253,7 +257,8 @@ class ODMParser:
                 )
 
                 team = Team(
-                    natural_key=xml_root.attrib["name"],
+                    id=id_generator(xml_root.attrib["name"]),
+                    nk=xml_root.attrib["name"],
                     name=xml_root.attrib["name"],
                     contacts=contacts,
                 )
@@ -296,6 +301,7 @@ class ODMParser:
 
                 entity = Entity(
                     id=id_generator(xml_root.attrib["name"]),
+                    nk=xml_root.attrib["name"],
                     name=xml_root.attrib["name"],
                     description=xml_root.findtext("comment")
                     if xml_root.findtext("comment")
@@ -365,6 +371,7 @@ class ODMParser:
 
                     attribute = Attribute(
                         id=id_generator(attr_xml.attrib["name"]),
+                        nk=attr_xml.attrib["name"],
                         entity_id=entity.id,
                         name=attr_xml.attrib.get("name", ""),
                         data_type=ODMAttributeTypesMapping.get(
@@ -425,6 +432,7 @@ class ODMParser:
 
                 relation = Relation(
                     id=id_generator(xml_root.attrib["name"]),
+                    nk=xml_root.attrib["name"],
                     source_entity_id=self.LM.all_lm_units_by_odm_id[
                         xml_root.findtext("sourceEntity")
                     ].id,
@@ -487,6 +495,7 @@ class ODMParser:
 
                 entity_identifier = EntityIdentifier(
                     id=id_generator(name),
+                    nk=name,
                     name=name,
                     is_pk=is_pk,
                     entity_id=entity_id,
