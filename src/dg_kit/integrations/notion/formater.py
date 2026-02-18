@@ -19,12 +19,12 @@ class RowFormater:
 
     def properties_from_row(self, row: DataCatalogRow) -> dict:
         props = {
-            'data_unit_id': {
+            self.config['row_property_mapping']['id']: {
                 "rich_text": [{"type": "text", "text": {"content": row.id}}]
             },
-            'title': {"title": [{"text": {"content": row.data_unit_name}}]},
-            'type': {"select": {"name": row.data_unit_type.value}},
-            'domain': {"select": {"name": row.domain}},
+            self.config['row_property_mapping']['title']: {"title": [{"text": {"content": row.data_unit_name}}]},
+            self.config['row_property_mapping']['type']: {"select": {"name": row.data_unit_type.value}},
+            self.config['row_property_mapping']['domain']: {"select": {"name": row.domain}},
         }
 
         return props
@@ -69,21 +69,21 @@ class RowFormater:
             "bulleted_list_item": {"rich_text": rich_text},
         }
 
-    def build_entity_page_blocks(self, data_unit_details: Entity) -> list[dict]:
+    def build_entity_page_blocks(self, entity_page: EntityPage) -> list[dict]:
         # Build blocks (example)
         blocks: list[dict] = []
 
         # Description
         blocks.append(self._h2(self.config['section_name_mapping']['description']))
-        if data_unit_details.description:
-            blocks.append(self._para(data_unit_details.description))
+        if entity_page.description:
+            blocks.append(self._para(entity_page.description))
         else:
             blocks.append(self._para("—"))
 
         # Identifiers
         blocks.append(self._h2(self.config['section_name_mapping']['pk_attributes_references']))
-        if data_unit_details.pk_attributes_references:
-            for attribute_ref in data_unit_details.pk_attributes_references:
+        if entity_page.pk_attributes_references:
+            for attribute_ref in entity_page.pk_attributes_references:
                 blocks.append(
                     self._para_rich_text(
                         [self._rt_page_mention(attribute_ref)]
@@ -94,8 +94,8 @@ class RowFormater:
 
         # Attributes
         blocks.append(self._h2(self.config['section_name_mapping']['attributes_references']))
-        if data_unit_details.attributes_page_ids:
-            for attribute_page_id in data_unit_details.attributes_page_ids:
+        if entity_page.attributes_references:
+            for attribute_page_id in entity_page.attributes_references:
                 blocks.append(
                     self._para_rich_text(
                         [self._rt_page_mention(attribute_page_id)]
@@ -106,8 +106,8 @@ class RowFormater:
 
         # Relations
         blocks.append(self._h2(self.config['section_name_mapping']['relations_references']))
-        if data_unit_details.relations_page_ids:
-            for relation_page_id in data_unit_details.relations_page_ids:
+        if entity_page.relations_references:
+            for relation_page_id in entity_page.relations_references:
                 blocks.append(
                     self._para_rich_text(
                         [self._rt_page_mention(relation_page_id)]
@@ -118,8 +118,8 @@ class RowFormater:
 
         # Linked docs
         blocks.append(self._h2(self.config['section_name_mapping']['linked_documents']))
-        if data_unit_details.linked_documents:
-            for document in data_unit_details.linked_documents:
+        if entity_page.linked_documents:
+            for document in entity_page.linked_documents:
                 document_link = self._bullet(
                     [self._rt_text(document.name, url=document.reference)]
                 )
@@ -129,8 +129,8 @@ class RowFormater:
 
         # Responsible parties
         blocks.append(self._h2(self.config['section_name_mapping']['responsible_parties']))
-        if data_unit_details.responsible_parties:
-            for party in data_unit_details.responsible_parties:
+        if entity_page.responsible_parties:
+            for party in entity_page.responsible_parties:
                 party_name = self._bullet(
                     [self._rt_text(party.name)]
                 )
@@ -140,47 +140,47 @@ class RowFormater:
         else:
             blocks.append(self._para("—"))
 
-        # Master source systems
+        # Mapping to physical model
+        blocks.append(self._h2(self.config['section_name_mapping']['pm_mapping_references']))
+        if entity_page.pm_mapping_references:
+            for pm_obj_reference in entity_page.pm_mapping_references:
+                blocks.append(
+                    self._bullet([self._rt_text(pm_obj_reference.name)])
+                )  # or _rt_user_mention(not_user_id)
+        else:
+            blocks.append(self._para("—"))
+
+        # Source systems
         blocks.append(self._h2(self.config['section_name_mapping']['source_systems']))
-        if data_unit_details.master_source_systems:
-            for source_system in sorted(data_unit_details.master_source_systems):
+        if entity_page.source_systems:
+            for source_system in entity_page.source_systems:
                 blocks.append(
                     self._bullet([self._rt_text(source_system)])
                 )
         else:
             blocks.append(self._para("—"))
 
-        # Mapping to physical model
-        blocks.append(self._h2(self.config['section_name_mapping']['pm_mapping_references']))
-        if data_unit_details.core_layer_mapping:
-            for table in sorted(data_unit_details.core_layer_mapping):
-                blocks.append(
-                    self._bullet([self._rt_text(table)])
-                )  # or _rt_user_mention(not_user_id)
-        else:
-            blocks.append(self._para("—"))
-
         return blocks
 
-    def build_attribute_page_blocks(self, data_unit_details: Attribute) -> list[dict]:
+    def build_attribute_page_blocks(self, attribute_page: AttributePage) -> list[dict]:
         # Build blocks (example)
         blocks: list[dict] = []
 
         # Description
         blocks.append(self._h2(self.config['section_name_mapping']['description']))
-        if data_unit_details.description:
-            blocks.append(self._para(data_unit_details.description))
+        if attribute_page.description:
+            blocks.append(self._para(attribute_page.description))
         else:
             blocks.append(self._para("—"))
 
         # Entity
         blocks.append(self._h2(self.config['section_name_mapping']['parent_entity_reference']))
-        if data_unit_details.parent_entity_page_id:
+        if attribute_page.parent_entity_reference:
             blocks.append(
                 self._para_rich_text(
                     [
                         self._rt_page_mention(
-                            data_unit_details.parent_entity_page_id
+                            attribute_page.parent_entity_reference
                         )
                     ]
                 )
@@ -190,22 +190,22 @@ class RowFormater:
 
         # Data Type
         blocks.append(self._h2(self.config['section_name_mapping']['data_type']))
-        if data_unit_details.data_type:
-            blocks.append(self._para(data_unit_details.data_type))
+        if attribute_page.data_type:
+            blocks.append(self._para(attribute_page.data_type))
         else:
             blocks.append(self._para("—"))
 
         # Sensetivity Type
         blocks.append(self._h2(self.config['section_name_mapping']['sensitivity_type']))
-        if data_unit_details.sensitivity_type:
-            blocks.append(self._para(data_unit_details.sensitivity_type))
+        if attribute_page.sensitivity_type:
+            blocks.append(self._para(attribute_page.sensitivity_type))
         else:
             blocks.append(self._para("—"))
 
         # Linked docs
         blocks.append(self._h2(self.config['section_name_mapping']['linked_documents']))
-        if data_unit_details.linked_documents:
-            for document in data_unit_details.linked_documents:
+        if attribute_page.linked_documents:
+            for document in attribute_page.linked_documents:
                 document_link = self._bullet(
                     [self._rt_text(document.name, url=document.reference)]
                 )
@@ -215,28 +215,28 @@ class RowFormater:
 
         # Responsible parties
         blocks.append(self._h2(self.config['section_name_mapping']['responsible_parties']))
-        if data_unit_details.responsible_parties:
-            for party in data_unit_details.responsible_parties:
+        if attribute_page.responsible_parties:
+            for party in attribute_page.responsible_parties:
                 blocks.append(
                     self._bullet([self._rt_text(party.name)])
-                )  # or _rt_user_mention(not_user_id)
+                )
         else:
             blocks.append(self._para("—"))
 
-        # Mapping to core layer tables
+        # Mapping to Physical Model layer tables
         blocks.append(self._h2(self.config['section_name_mapping']['pm_mapping_references']))
-        if data_unit_details.core_layer_mapping:
-            for table in sorted(data_unit_details.core_layer_mapping):
+        if attribute_page.pm_mapping_references:
+            for pm_obj_reference in attribute_page.pm_mapping_references:
                 blocks.append(
-                    self._bullet([self._rt_text(table)])
-                )  # or _rt_user_mention(not_user_id)
+                    self._bullet([self._rt_text(pm_obj_reference.name)])
+                )
         else:
             blocks.append(self._para("—"))
 
-        # Master source systems
+        # Source systems
         blocks.append(self._h2(self.config['section_name_mapping']['source_systems']))
-        if data_unit_details.master_source_systems:
-            for source_system in sorted(data_unit_details.master_source_systems):
+        if attribute_page.source_systems:
+            for source_system in attribute_page.source_systems:
                 blocks.append(
                     self._bullet([self._rt_text(source_system)])
                 )
@@ -245,25 +245,25 @@ class RowFormater:
 
         return blocks
 
-    def build_relation_page_blocks(self, data_unit_details: Relation) -> list[dict]:
+    def build_relation_page_blocks(self, relation_page: RelationPage) -> list[dict]:
         # Build blocks (example)
         blocks: list[dict] = []
 
         # Description
         blocks.append(self._h2(self.config['section_name_mapping']['description']))
-        if data_unit_details.description:
-            blocks.append(self._para(data_unit_details.description))
+        if relation_page.description:
+            blocks.append(self._para(relation_page.description))
         else:
             blocks.append(self._para("—"))
 
         # Source entity
         blocks.append(self._h2(self.config['section_name_mapping']['source_entity_reference']))
-        if data_unit_details.source_entity_page_reference:
+        if relation_page.source_entity_reference:
             blocks.append(
                 self._para_rich_text(
                     [
                         self._rt_page_mention(
-                            data_unit_details.source_entity_page_reference
+                            relation_page.source_entity_reference
                         )
                     ]
                 )
@@ -273,12 +273,12 @@ class RowFormater:
 
         # Target entity
         blocks.append(self._h2(self.config['section_name_mapping']['target_entity_reference']))
-        if data_unit_details.target_entity_page_referenc:
+        if relation_page.target_entity_reference:
             blocks.append(
                 self._para_rich_text(
                     [
                         self._rt_page_mention(
-                            data_unit_details.target_entity_page_referenc
+                            relation_page.target_entity_reference
                         )
                     ]
                 )
@@ -288,8 +288,8 @@ class RowFormater:
 
         # Linked docs
         blocks.append(self._h2(self.config['section_name_mapping']['linked_documents']))
-        if data_unit_details.linked_documents:
-            for document in data_unit_details.linked_documents:
+        if relation_page.linked_documents:
+            for document in relation_page.linked_documents:
                 document_link = self._bullet(
                     [self._rt_text(document.name, url=document.reference)]
                 )
@@ -299,8 +299,8 @@ class RowFormater:
 
         # Responsible parties
         blocks.append(self._h2(self.config['section_name_mapping']['responsible_parties']))
-        if data_unit_details.responsible_parties:
-            for party in data_unit_details.responsible_parties:
+        if relation_page.responsible_parties:
+            for party in relation_page.responsible_parties:
                 blocks.append(
                     self._bullet([self._rt_text(party.name)])
                 )  # or _rt_user_mention(not_user_id)
@@ -309,18 +309,18 @@ class RowFormater:
 
         # Mapping to core layer tables
         blocks.append(self._h2(self.config['section_name_mapping']['pm_mapping_references']))
-        if data_unit_details.core_layer_mapping:
-            for table in sorted(data_unit_details.core_layer_mapping):
+        if relation_page.pm_mapping_references:
+            for pm_obj_reference in relation_page.pm_mapping_references:
                 blocks.append(
-                    self._bullet([self._rt_text(table)])
+                    self._bullet([self._rt_text(pm_obj_reference.name)])
                 )  # or _rt_user_mention(not_user_id)
         else:
             blocks.append(self._para("—"))
 
         # Master source systems
         blocks.append(self._h2(self.config['section_name_mapping']['source_systems']))
-        if data_unit_details.master_source_systems:
-            for source_system in sorted(data_unit_details.master_source_systems):
+        if relation_page.source_systems:
+            for source_system in relation_page.source_systems:
                 blocks.append(
                     self._bullet([self._rt_text(source_system)])
                 )

@@ -9,7 +9,8 @@ from dg_kit.base.dataclasses.data_catalog import (
     EntityPage,
     AttributePage,
     RelationPage,
-    ObjectReference
+    ObjectReference,
+    IndexedCatalog
 )
 from dg_kit.base.dataclasses.logical_model import (
     Entity,
@@ -28,16 +29,13 @@ from dg_kit.integrations.notion.parser import PageParser
 class NotionDataCatalog(DataCatalogEngine):
     def __init__(
         self,
-        notion_token: str,
-        dc_table_id: str,
-        row_formater_config: dict,
-        page_parser_config: dict,
+        notion_config: dict,
     ):
-        self.notion = Client(auth=notion_token)
-        self.dc_table_id = dc_table_id
-        self.notion_page_id_by_id: Dict[str, str] = {}
-        self.row_formater = RowFormater(row_formater_config)
-        self.page_parser = PageParser(page_parser_config)
+        self.notion = Client(auth=notion_config['notion_token'])
+        self.dc_table_id = notion_config['dc_table_id']
+        self.notion_page_by_id: Dict[str, str] = {}
+        self.row_formater = RowFormater(notion_config)
+        self.page_parser = PageParser(notion_config)
 
 
     def _overwrite_page_body(self, page_id: str, new_blocks: list[dict]) -> None:
@@ -80,10 +78,10 @@ class NotionDataCatalog(DataCatalogEngine):
                 )
 
     def pull_data_catalog(self, page_size=100) -> list[DataCatalogRow]:
+        print('Pulling data from Notion...')
         rows_by_id: Dict[str, DataCatalogRow] = {}
         page_by_id: Dict[str, EntityPage | AttributePage | RelationPage] = {}
         id_by_notion_page: Dict[str, str] = {}
-        notion_page_by_id: Dict[str, str] = {} 
         raw_page_by_id: Dict[str, dict] = {}
         start_cursor: str = None
 
@@ -105,6 +103,10 @@ class NotionDataCatalog(DataCatalogEngine):
 
                 row = DataCatalogRow(
                     id=id,
+                    reference=ObjectReference(
+                        id=id,
+                        reference_link=page["id"]
+                    ),
                     data_unit_name=title,
                     data_unit_type=unit_type,
                     domain=domain,
@@ -127,7 +129,7 @@ class NotionDataCatalog(DataCatalogEngine):
                 raw_page["data_unit_type"] = unit_type
                 raw_page_by_id[id] = raw_page
                 id_by_notion_page[notion_page_id] = id
-                notion_page_by_id[id] = notion_page_id
+                self.notion_page_by_id[id] = ObjectReference(id, notion_page_id)
 
 
             if not resp.get("has_more"):
@@ -189,11 +191,15 @@ class NotionDataCatalog(DataCatalogEngine):
 
             page_by_id[id] = page_obj
 
-        return (rows_by_id, page_by_id, notion_page_by_id)
+            ic = IndexedCatalog(
+                row_by_id=rows_by_id,
+                reference_by_id=self.notion_page_by_id,
+                page_by_id=page_by_id,
+            )
+
+        return ic
 
     def update_page(self, page_obj: EntityPage | AttributePage | RelationPage) -> None:
-        page_id = self.page_by_id[page_obj.id]
-
         if isinstance(page_obj, EntityPage):
             blocks = self.row_formater.build_entity_page_blocks(page_obj)
         elif isinstance(page_obj, AttributePage):
@@ -205,17 +211,15 @@ class NotionDataCatalog(DataCatalogEngine):
                 f"Unsupported data unit type: {page_obj.data_unit_type}"
             )
 
-        self._overwrite_page_body(page_id, blocks)
+        self._overwrite_page_body(page_obj.reference.reference_link, blocks)
     
     def add_page(self, data_unit_page):
         self.update_page(data_unit_page)
 
     def update_row(self, data_catalog_row: DataCatalogRow) -> None:
-        notion_page_id = self.notion_page_id_by_id[data_catalog_row.id]
-
         props = self.row_formater.properties_from_row(data_catalog_row)
 
-        self.notion.pages.update(page_id=notion_page_id, properties=props)
+        self.notion.pages.update(page_id=data_catalog_row.reference.reference_link, properties=props)
 
     def add_row(self, data_catalog_row: DataCatalogRow) -> None:
         page = self.notion.pages.create(
@@ -223,7 +227,11 @@ class NotionDataCatalog(DataCatalogEngine):
             properties=self.row_formater.properties_from_row(data_catalog_row),
         )
 
-        return page["id"]
+        reference = ObjectReference(data_catalog_row.id, page["id"])
+
+        self.notion_page_by_id[data_catalog_row.id] = reference
+
+        return reference
 
     def delete_by_id(self, id: str) -> None:
         self.notion.pages.update(page_id=id, archived=True)

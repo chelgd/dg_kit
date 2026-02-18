@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Dict
 
 from datetime import datetime
 
@@ -19,6 +19,7 @@ class ObjectReference:
 @dataclass(frozen=True, slots=True)
 class DataCatalogRow:
     id: str
+    reference: ObjectReference
     data_unit_type: DataUnitType
     data_unit_name: str
     domain: str
@@ -72,3 +73,10 @@ class RelationPage:
     #optional_target: bool
     #source_cardinality: str
     #target_cardinality: str
+
+
+@dataclass(frozen=True, slots=True)
+class IndexedCatalog:
+    row_by_id: Dict[str, DataCatalogRow]
+    reference_by_id: Dict[str, ObjectReference]
+    page_by_id: Dict[str, EntityPage | AttributePage | RelationPage]

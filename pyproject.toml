@@ -10,6 +10,12 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "Chelidze Georgii", email = "chelidze.georgii.d@gmail.com" }]
+dependencies = [
+    "pyyaml>=6.0.3",
+]
+
+[project.scripts]
+dg_kit = "dg_kit.cli:main"
 
 [project.optional-dependencies]
 notion = [

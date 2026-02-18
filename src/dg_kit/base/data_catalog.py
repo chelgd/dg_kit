@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-
 from abc import ABC, abstractmethod
-from typing import Dict, List, Tuple, final
+from typing import Dict, Tuple
+from os import environ
+import pickle
+from pathlib import Path
 
-from dg_kit.base import add_value_to_indexed_list
+from dg_kit.utils.artifact.local import LocalArtifact
 from dg_kit.base.enums import DataUnitType
 from dg_kit.base.dataclasses.data_catalog import (
     DataCatalogRow,
@@ -12,24 +14,13 @@ from dg_kit.base.dataclasses.data_catalog import (
     AttributePage,
     RelationPage,
     ObjectReference,
-)
-from dg_kit.base.business_information import BusinessInformation
-from dg_kit.base.dataclasses.business_information import (
-    Document,
-    Team, Contact,
-    Email, Url
+    IndexedCatalog
 )
 from dg_kit.base.logical_model import LogicalModel
 from dg_kit.base.dataclasses.logical_model import (
     Entity,
     Attribute,
     Relation,
-)
-from dg_kit.base.physical_model import PhysicalModel
-from dg_kit.base.dataclasses.physical_model import (
-    Layer,
-    Table,
-    Column,
 )
 
 class DataCatalogEngine(ABC):
@@ -63,106 +54,321 @@ class DataCatalogEngine(ABC):
 class DataCatalog:
     def __init__(
         self,
-        LM: LogicalModel,
-        PM: PhysicalModel,
-        BI: BusinessInformation,
         engine: DataCatalogEngine,
+        config: Dict,
     ):
-        self.LM = LM
-        self.PM = PM
-        self.BI = BI
         self.engine = engine
-        self.lm_objects_by_pm_id: Dict[str, List[Entity | Attribute | Relation]] = {}
-        self.bi_objects_by_pm_id: Dict[str, List[Team | Contact | Document | Email | Url]] = {}
-        self.pm_objects_by_lm_id: Dict[str, List[Layer | Table | Column]] = self.LM.pm_objects_by_lm_id
-        self.bi_objects_by_lm_id: Dict[str, List[Team | Contact | Document | Email | Url]] = {}
-        self.lm_objects_by_bi_id: Dict[str, List[Entity | Attribute | Relation]] = {}
-        self.pm_objects_by_bi_id: Dict[str, List[Layer | Table | Column]] = {}
-        self.rows_by_id: Dict[str, DataCatalogRow] = {}
-        self.references_by_id: Dict[str, ObjectReference] = {}
-        self.page_by_id: Dict[str, Entity | Attribute | Relation] = {}
+        self.config = config
+        self.artifact_path = Path(f"{self.config['data_catalog']['dc_checkpoint_path']}/{self.config['name']}.pkl")
 
-        self.rows_by_id, self.page_by_id, self.references_by_id = self.engine.pull_data_catalog()
+        if self.artifact_path.exists():
+            self.indexed_catalog: IndexedCatalog = self.load_from_local()
 
-        # Build lm_objects_by_pm_id
-        for lm_id, pm_objs in self.pm_objects_by_lm_id.items():
-            for pm_obj in pm_objs:
-                add_value_to_indexed_list(
-                    self.lm_objects_by_pm_id,
-                    pm_obj.id,
-                    self.LM.all_units_by_id[lm_id],
-                )
-        
-        self.lm_ids = set(self.LM.all_units_by_id)
-        self.row_ids = set(self.rows_by_id)
-        self.rows_and_lm_intersection = self.row_ids & self.lm_ids
-        self.rows_diff = self.row_ids - self.lm_ids
-        self.lm_diff = self.lm_ids - self.row_ids
-        ## Build bi_objects_by_lm_id and lm_objects_by_bi_id
-        #for lm_id, lm_obj in self.LM.all_units_by_id.items():
-        #    linked_bi_units: List[Team | Contact | Document | Email | Url] = []
-        #    linked_bi_units.extend(lm_obj.responsible_parties)
-        #    linked_bi_units.extend(lm_obj.documents)
-        #    for team in lm_obj.responsible_parties:
-        #        linked_bi_units.extend(team.contacts)
-        #        for contact in team.contacts:
-        #            linked_bi_units.extend(contact.emails)
-        #            linked_bi_units.extend(contact.urls)
-        #    for bi_unit in linked_bi_units:
-        #        add_value_to_indexed_list(self.bi_objects_by_lm_id, lm_id, bi_unit)
-        #        add_value_to_indexed_list(self.lm_objects_by_bi_id, bi_unit.id, lm_obj)
-        #    del linked_bi_units
-        #    
-        #for bi_id, lm_objs in self.lm_objects_by_bi_id.items():
-        #    for lm_obj in lm_objs:
-        #        for pm_obj in self.pm_objects_by_lm_id.get(lm_obj.id, []):
-        #            add_value_to_indexed_list(self.pm_objects_by_bi_id, bi_id, pm_obj)
-        #
-        #for pm_id, lm_objs in self.lm_objects_by_pm_id.items():
-        #    for lm_obj in lm_objs:
-        #        for bi_unit in self.bi_objects_by_lm_id.get(lm_obj.id, []):
-        #            add_value_to_indexed_list(self.bi_objects_by_pm_id, pm_id, bi_unit)
+        else:
+            self.indexed_catalog = self.engine.pull_data_catalog()
+            self.save_to_local()
+
 
     def get_row_by_id(self, id: str) -> DataCatalogRow:
-        return self.rows_by_id.get(id)
+        return self.indexed_catalog.row_by_id.get(id)
 
     def get_page_by_id(self, id: str) -> Entity | Attribute | Relation:
-        return self.page_by_id.get(id)
+        return self.indexed_catalog.page_by_id.get(id)
 
     def update_row(
         self, data_catalog_row: DataCatalogRow
     ) -> None:
-        self.rows_by_id[data_catalog_row.id] = data_catalog_row
+        self.indexed_catalog.row_by_id[data_catalog_row.id] = data_catalog_row
         self.engine.update_row(data_catalog_row)
 
     def update_page(
-        self, data_unit_page: EntityPage | AttributePage | RelationPage
+        self, page: EntityPage | AttributePage | RelationPage
     ) -> None:
-        self.page_by_id[data_unit_page.id] = data_unit_page
-        self.engine.update_page(data_unit_page)
+        print(f'Updating page: {page}')
+        self.indexed_catalog.page_by_id[page.id] = page
+        self.engine.update_page(page)
 
     def add_page(
-        self, data_unit_page: EntityPage | AttributePage | RelationPage
+        self, page: EntityPage | AttributePage | RelationPage
     ) -> None:
-        if data_unit_page.id in self.page_by_id:
+        print(f'Adding page: {page}')
+        if page.id in self.indexed_catalog.page_by_id:
             raise KeyError(
-                f"Data unit page with id='{data_unit_page.id}' already exists. Use update instead."
+                f"Data unit page with id='{page.id}' already exists. Use update instead."
             )
         
-        self.page_by_id[data_unit_page.id] = data_unit_page
-        self.engine.add_page(data_unit_page)
+        self.indexed_catalog.page_by_id[page.id] = page
+        self.engine.add_page(page)
 
     def add_row(self, data_catalog_row: DataCatalogRow) -> None:
-        if data_catalog_row.id in self.rows_by_id:
+        print(f"Adding new row {data_catalog_row}")
+        if data_catalog_row.id in self.indexed_catalog.row_by_id:
             raise KeyError(
                 f"Data unit with id='{data_catalog_row.id}' already exists. Use update instead."
             )
 
-        self.rows_by_id[data_catalog_row.id] = data_catalog_row
+        self.indexed_catalog.row_by_id[data_catalog_row.id] = data_catalog_row
         page_reference = self.engine.add_row(data_catalog_row)
-        self.references_by_id[data_catalog_row.id] = page_reference
+        self.indexed_catalog.reference_by_id[data_catalog_row.id] = page_reference
+
+        return page_reference
 
     def delete_by_id(self, id: str) -> None:
-        self.rows_by_id.pop(id, None)
-        self.page_by_id.pop(id, None)
+        self.indexed_catalog.row_by_id.pop(id, None)
+        self.indexed_catalog.page_by_id.pop(id, None)
         self.engine.delete_by_id(id)
+
+    def sync_with_model(
+        self,
+        LM: LogicalModel,
+    ):
+        lm_ids = set(LM.all_units_by_id)
+        row_ids = set(self.indexed_catalog.row_by_id)
+        rows_and_lm_intersection = row_ids & lm_ids
+        rows_diff = row_ids - lm_ids
+        lm_diff = lm_ids - row_ids
+
+        for id in rows_diff:
+            print(f"Deleting: {id}")
+            self.delete_by_id(id)
+
+        print('Adding new rows...')
+        for data_unit_id in lm_diff:
+            if data_unit_id in LM.entities:
+                entity = LM.entities[data_unit_id]
+                row = DataCatalogRow(
+                    id=entity.id,
+                    reference=ObjectReference(
+                        id=entity.id,
+                        reference_link=self.indexed_catalog.reference_by_id[entity.id].reference_link
+                    ),
+                    data_unit_name=entity.name,
+                    data_unit_type=DataUnitType.ENTITY,
+                    domain=entity.domain or environ.get("DG_KIT_DEFAULT_DOMAIN", "Unknown"),
+                )
+
+            elif data_unit_id in LM.attributes:
+                attribute = LM.attributes[data_unit_id]
+                row = DataCatalogRow(
+                    id=attribute.id,
+                    reference=ObjectReference(
+                        id=attribute.id,
+                        reference_link=self.indexed_catalog.reference_by_id[attribute.id].reference_link
+                    ),
+                    data_unit_name=attribute.name,
+                    data_unit_type=DataUnitType.ATTRIBUTE,
+                    domain=attribute.domain or environ.get("DG_KIT_DEFAULT_DOMAIN", "Unknown"),
+                )
+
+            elif data_unit_id in LM.relations:
+                relation = LM.relations[data_unit_id]
+                row = DataCatalogRow(
+                    id=relation.id,
+                    reference=ObjectReference(
+                        id=relation.id,
+                        reference_link=self.indexed_catalog.reference_by_id[relation.id].reference_link
+                    ),
+                    data_unit_name=relation.name,
+                    data_unit_type=DataUnitType.RELATION,
+                    domain=relation.domain or environ.get("DG_KIT_DEFAULT_DOMAIN", "Unknown"),
+                )
+
+            else:
+                print("error")  
+                continue
+
+            self.add_row(row)
+
+
+        print('Adding new pages...')
+        for data_unit_id in lm_diff:
+            if data_unit_id in LM.entities:       
+                entity = LM.entities[data_unit_id]
+                
+                for identifier in LM.identifiers_by_entity_id[entity.id]:
+                    if identifier.is_pk:
+                        pk_attributes_references = [
+                            self.indexed_catalog.reference_by_id[attribute.id].reference_link for attribute in identifier.attributes
+                        ]
+                attributes_references = [self.indexed_catalog.reference_by_id[attribute.id].reference_link for attribute in LM.attributes_by_entity_id[entity.id]]
+                relations_references = [self.indexed_catalog.reference_by_id[relation.id].reference_link for relation in LM.relations_by_entity_id[entity.id]]
+
+                page = EntityPage(
+                    id=data_unit_id,
+                    reference=self.indexed_catalog.reference_by_id[entity.id],
+                    data_unit_type=DataUnitType.ENTITY,
+                    description=entity.description,
+                    pk_attributes_references=pk_attributes_references,
+                    attributes_references=attributes_references,
+                    relations_references=relations_references,
+                    linked_documents=entity.documents,
+                    responsible_parties=entity.responsible_parties,
+                    pm_mapping_references=entity.pm_map,
+                    source_systems=entity.source_systems,
+                )
+            
+            elif data_unit_id in LM.attributes:
+                attribute = LM.attributes[data_unit_id]
+
+                page = AttributePage(
+                    id=data_unit_id,
+                    reference=self.indexed_catalog.reference_by_id[attribute.id],
+                    data_unit_type=DataUnitType.ATTRIBUTE,
+                    description=attribute.description,
+                    parent_entity_reference=self.indexed_catalog.reference_by_id[attribute.entity_id].reference_link,
+                    data_type=attribute.data_type,
+                    sensitivity_type=attribute.sensitivity_type,
+                    linked_documents=attribute.documents,
+                    responsible_parties=attribute.responsible_parties,
+                    pm_mapping_references=attribute.pm_map,
+                    source_systems=attribute.source_systems,
+                )
+            
+            elif data_unit_id in LM.relations:
+                relation = LM.relations[data_unit_id]
+
+                page = RelationPage(
+                    id=data_unit_id,
+                    reference=self.indexed_catalog.reference_by_id[relation.id],
+                    data_unit_type=DataUnitType.RELATION,
+                    description=relation.description,
+                    source_entity_reference=self.indexed_catalog.reference_by_id[relation.source_entity_id].reference_link,
+                    target_entity_reference=self.indexed_catalog.reference_by_id[relation.target_entity_id].reference_link,
+                    linked_documents=relation.documents,
+                    responsible_parties=relation.responsible_parties,
+                    pm_mapping_references=relation.pm_map,
+                    source_systems=relation.source_systems,
+                )
+
+
+            else:
+                print("error")  
+                continue
+
+            self.add_page(page)
+
+
+        print('Updating rows...')
+        for data_unit_id in LM.all_units_by_id:
+            if data_unit_id in LM.entities:
+                entity = LM.entities[data_unit_id]
+                row = DataCatalogRow(
+                    id=entity.id,
+                    reference=ObjectReference(
+                        id=entity.id,
+                        reference_link=self.indexed_catalog.reference_by_id[entity.id].reference_link
+                    ),
+                    data_unit_name=entity.name,
+                    data_unit_type=DataUnitType.ENTITY,
+                    domain=entity.domain or environ.get("DG_KIT_DEFAULT_DOMAIN", "Unknown"),
+                )
+        
+            elif data_unit_id in LM.attributes:
+                attribute = LM.attributes[data_unit_id]
+                row = DataCatalogRow(
+                    id=attribute.id,
+                    reference=ObjectReference(
+                        id=attribute.id,
+                        reference_link=self.indexed_catalog.reference_by_id[attribute.id].reference_link
+                    ),
+                    data_unit_name=attribute.name,
+                    data_unit_type=DataUnitType.ATTRIBUTE,
+                    domain=attribute.domain or environ.get("DG_KIT_DEFAULT_DOMAIN", "Unknown"),
+                )
+        
+            elif data_unit_id in LM.relations:
+                relation = LM.relations[data_unit_id]
+                row = DataCatalogRow(
+                    id=relation.id,
+                    reference=ObjectReference(
+                        id=relation.id,
+                        reference_link=self.indexed_catalog.reference_by_id[relation.id].reference_link
+                    ),
+                    data_unit_name=relation.name,
+                    data_unit_type=DataUnitType.RELATION,
+                    domain=relation.domain or environ.get("DG_KIT_DEFAULT_DOMAIN", "Unknown"),
+                )
+        
+            else:
+                print("error")  
+                continue
+                
+            self.update_row(row)
+
+
+        print('Updating pages...')
+        for data_unit_id in rows_and_lm_intersection:
+            if data_unit_id in LM.entities:       
+                entity = LM.entities[data_unit_id]
+
+                
+                for identifier in LM.identifiers_by_entity_id[entity.id]:
+                    if identifier.is_pk:
+                        pk_attributes_references = [
+                            self.indexed_catalog.reference_by_id[attribute.id].reference_link for attribute in identifier.attributes
+                        ]
+                attributes_references = [self.indexed_catalog.reference_by_id[attribute.id].reference_link for attribute in LM.attributes_by_entity_id[entity.id]]
+                relations_references = [self.indexed_catalog.reference_by_id[relation.id].reference_link for relation in LM.relations_by_entity_id[entity.id]]
+
+                page = EntityPage(
+                    id=data_unit_id,
+                    reference=self.indexed_catalog.reference_by_id[entity.id],
+                    data_unit_type=DataUnitType.ENTITY,
+                    description=entity.description,
+                    pk_attributes_references=pk_attributes_references,
+                    attributes_references=attributes_references,
+                    relations_references=relations_references,
+                    linked_documents=entity.documents,
+                    responsible_parties=entity.responsible_parties,
+                    pm_mapping_references=entity.pm_map,
+                    source_systems=entity.source_systems,
+                )
+            
+            elif data_unit_id in LM.attributes:
+                attribute = LM.attributes[data_unit_id]
+
+                page = AttributePage(
+                    id=data_unit_id,
+                    reference=self.indexed_catalog.reference_by_id[attribute.id],
+                    data_unit_type=DataUnitType.ATTRIBUTE,
+                    description=attribute.description,
+                    parent_entity_reference=self.indexed_catalog.reference_by_id[attribute.entity_id].reference_link,
+                    data_type=attribute.data_type,
+                    sensitivity_type=attribute.sensitivity_type,
+                    linked_documents=attribute.documents,
+                    responsible_parties=attribute.responsible_parties,
+                    pm_mapping_references=attribute.pm_map,
+                    source_systems=attribute.source_systems,
+                )
+            
+            elif data_unit_id in LM.relations:
+                relation = LM.relations[data_unit_id]
+
+                page = RelationPage(
+                    id=data_unit_id,
+                    reference=self.indexed_catalog.reference_by_id[relation.id],
+                    data_unit_type=DataUnitType.RELATION,
+                    description=relation.description,
+                    source_entity_reference=self.indexed_catalog.reference_by_id[relation.source_entity_id].reference_link,
+                    target_entity_reference=self.indexed_catalog.reference_by_id[relation.target_entity_id].reference_link,
+                    linked_documents=relation.documents,
+                    responsible_parties=relation.responsible_parties,
+                    pm_mapping_references=relation.pm_map,
+                    source_systems=relation.source_systems,
+                )
+
+
+            else:
+                print("error")  
+                continue
+
+            self.update_page(page)
+    
+    def save_to_local(self):
+        with open(f"{self.config['data_catalog']['dc_checkpoint_path']}/{self.config['name']}.pkl", "wb") as f:
+            pickle.dump(self.indexed_catalog, f)
+
+    def load_from_local(self):
+        with open(f"{self.config['data_catalog']['dc_checkpoint_path']}/{self.config['name']}.pkl", "rb") as f:
+            return pickle.load(f)
+    
