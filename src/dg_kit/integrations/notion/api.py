@@ -26,6 +26,7 @@ class NotionDataCatalog(DataCatalogEngine):
         self,
         notion_config: dict,
     ):
+        self.notion_config = notion_config
         self.notion = Client(auth=notion_config["notion_token"])
         self.dc_table_id = notion_config["dc_table_id"]
         self.notion_page_by_id: Dict[str, str] = {}
@@ -196,11 +197,11 @@ class NotionDataCatalog(DataCatalogEngine):
 
             page_by_id[id] = page_obj
 
-            ic = IndexedCatalog(
-                row_by_id=rows_by_id,
-                reference_by_id=self.notion_page_by_id,
-                page_by_id=page_by_id,
-            )
+        ic = IndexedCatalog(
+            row_by_id=rows_by_id,
+            reference_by_id=self.notion_page_by_id,
+            page_by_id=page_by_id,
+        )
 
         return ic
 
@@ -226,17 +227,45 @@ class NotionDataCatalog(DataCatalogEngine):
             page_id=data_catalog_row.reference.reference_link, properties=props
         )
 
-    def add_row(self, data_catalog_row: DataCatalogRow) -> None:
+    def add_row(self, raw_data_catalog_row: Dict) -> None:
         page = self.notion.pages.create(
             parent={"type": "data_source_id", "data_source_id": self.dc_table_id},
-            properties=self.row_formater.properties_from_row(data_catalog_row),
+            properties= {
+                self.notion_config["row_property_mapping"]["id"]: {
+                    "rich_text": [{"type": "text", "text": {"content": raw_data_catalog_row['id']}}]
+                },
+                self.notion_config["row_property_mapping"]["title"]: {
+                    "title": [{"text": {"content": raw_data_catalog_row['data_unit_name']}}]
+                },
+                self.notion_config["row_property_mapping"]["type"]: {
+                    "select": {"name": raw_data_catalog_row['data_unit_type']}
+                },
+                self.notion_config["row_property_mapping"]["domain"]: {
+                    "select": {"name": raw_data_catalog_row['domain']}
+                },
+            }
         )
 
-        reference = ObjectReference(data_catalog_row.id, page["id"])
+        reference = ObjectReference(raw_data_catalog_row['id'], page["id"])
 
-        self.notion_page_by_id[data_catalog_row.id] = reference
+        self.notion_page_by_id[raw_data_catalog_row['id']] = reference
 
         return reference
+    
+    def _find_page_id_by_row_id(self, row_id: str) -> str:
+        resp = self.notion.data_sources.query(
+            data_source_id=self.dc_table_id,
+            filter={
+                "property": DataCatalogRowProperties.ID,  # "Data unit id"
+                "rich_text": {"equals": row_id},
+            },
+            page_size=1,
+        )
+        results = resp.get("results", [])
+        if not results:
+            raise KeyError(f"Notion page not found for id={row_id}")
+        return results[0]["id"]
 
     def delete_by_id(self, id: str) -> None:
-        self.notion.pages.update(page_id=id, archived=True)
+        page_id = self._find_page_id_by_row_id(id)
+        self.notion.pages.update(page_id=page_id, archived=True)

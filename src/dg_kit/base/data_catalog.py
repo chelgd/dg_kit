@@ -62,6 +62,7 @@ class DataCatalog:
         self,
         engine: DataCatalogEngine,
         config: Dict,
+        pull: bool = False,
     ):
         self.engine = engine
         self.config = config
@@ -69,9 +70,13 @@ class DataCatalog:
             f"{self.config['data_catalog']['dc_checkpoint_path']}/{self.config['name']}.pkl"
         )
 
-        if self.artifact_path.exists():
+        if self.artifact_path.exists() and not pull:
             self.indexed_catalog: IndexedCatalog = self.load_from_local()
 
+        elif pull:
+            self.indexed_catalog = self.engine.pull_data_catalog()
+            self.save_to_local()
+        
         else:
             self.indexed_catalog = self.engine.pull_data_catalog()
             self.save_to_local()
@@ -101,20 +106,28 @@ class DataCatalog:
         self.indexed_catalog.page_by_id[page.id] = page
         self.engine.add_page(page)
 
-    def add_row(self, data_catalog_row: DataCatalogRow) -> None:
-        print(f"Adding new row {data_catalog_row}")
-        if data_catalog_row.id in self.indexed_catalog.row_by_id:
+    def add_row(self, raw_data_catalog_row: Dict) -> None:
+        print(f"Adding new row {raw_data_catalog_row}")
+        if raw_data_catalog_row['id'] in self.indexed_catalog.row_by_id:
             raise KeyError(
-                f"Data unit with id='{data_catalog_row.id}' already exists. Use update instead."
+                f"Data unit with id='{raw_data_catalog_row['id']}' already exists. Use update instead."
             )
 
-        self.indexed_catalog.row_by_id[data_catalog_row.id] = data_catalog_row
-        page_reference = self.engine.add_row(data_catalog_row)
-        self.indexed_catalog.reference_by_id[data_catalog_row.id] = page_reference
+        page_reference = self.engine.add_row(raw_data_catalog_row)
+        data_catalog_row = DataCatalogRow(
+            id=raw_data_catalog_row['id'],
+            reference=page_reference,
+            data_unit_type=raw_data_catalog_row['data_unit_type'],
+            data_unit_name=raw_data_catalog_row['data_unit_name'],
+            domain=raw_data_catalog_row['domain'],
+        )
+        self.indexed_catalog.row_by_id[raw_data_catalog_row['id']] = data_catalog_row
+        self.indexed_catalog.reference_by_id[raw_data_catalog_row['id']] = page_reference
 
         return page_reference
 
     def delete_by_id(self, id: str) -> None:
+        print(f"Deleting {self.indexed_catalog.row_by_id[id].data_unit_name}")
         self.indexed_catalog.row_by_id.pop(id, None)
         self.indexed_catalog.page_by_id.pop(id, None)
         self.engine.delete_by_id(id)
@@ -136,58 +149,22 @@ class DataCatalog:
         print("Adding new rows...")
         for data_unit_id in lm_diff:
             if data_unit_id in LM.entities:
-                entity = LM.entities[data_unit_id]
-                row = DataCatalogRow(
-                    id=entity.id,
-                    reference=ObjectReference(
-                        id=entity.id,
-                        reference_link=self.indexed_catalog.reference_by_id[
-                            entity.id
-                        ].reference_link,
-                    ),
-                    data_unit_name=entity.name,
-                    data_unit_type=DataUnitType.ENTITY,
-                    domain=entity.domain
-                    or environ.get("DG_KIT_DEFAULT_DOMAIN", "Unknown"),
-                )
-
+                data_unit_type = DataUnitType.ENTITY
             elif data_unit_id in LM.attributes:
-                attribute = LM.attributes[data_unit_id]
-                row = DataCatalogRow(
-                    id=attribute.id,
-                    reference=ObjectReference(
-                        id=attribute.id,
-                        reference_link=self.indexed_catalog.reference_by_id[
-                            attribute.id
-                        ].reference_link,
-                    ),
-                    data_unit_name=attribute.name,
-                    data_unit_type=DataUnitType.ATTRIBUTE,
-                    domain=attribute.domain
-                    or environ.get("DG_KIT_DEFAULT_DOMAIN", "Unknown"),
-                )
-
+                data_unit_type = DataUnitType.ATTRIBUTE
             elif data_unit_id in LM.relations:
-                relation = LM.relations[data_unit_id]
-                row = DataCatalogRow(
-                    id=relation.id,
-                    reference=ObjectReference(
-                        id=relation.id,
-                        reference_link=self.indexed_catalog.reference_by_id[
-                            relation.id
-                        ].reference_link,
-                    ),
-                    data_unit_name=relation.name,
-                    data_unit_type=DataUnitType.RELATION,
-                    domain=relation.domain
-                    or environ.get("DG_KIT_DEFAULT_DOMAIN", "Unknown"),
-                )
+                data_unit_type = DataUnitType.RELATION
+            
+            data_unit = LM.all_units_by_id[data_unit_id]
 
-            else:
-                print("error")
-                continue
+            raw_data_catalog_row = {
+                'id': data_unit.id,
+                'data_unit_name': data_unit.name,
+                'data_unit_type': data_unit_type,
+                'domain': data_unit.domain or "Unknown",
+            }
 
-            self.add_row(row)
+            self.add_row(raw_data_catalog_row)
 
         print("Adding new pages...")
         for data_unit_id in lm_diff:
@@ -270,8 +247,7 @@ class DataCatalog:
 
             self.add_page(page)
 
-        print("Updating rows...")
-        for data_unit_id in LM.all_units_by_id:
+        for data_unit_id in rows_and_lm_intersection:
             if data_unit_id in LM.entities:
                 entity = LM.entities[data_unit_id]
                 row = DataCatalogRow(
@@ -324,9 +300,13 @@ class DataCatalog:
                 print("error")
                 continue
 
-            self.update_row(row)
+            if row == self.indexed_catalog.row_by_id[data_unit_id]:
+                print(f"Data unit {row.data_unit_name} didn't change")
+            else:
+                print(f"Updating data unit row {row.data_unit_name}...")
+                self.update_row(row)
 
-        print("Updating pages...")
+
         for data_unit_id in rows_and_lm_intersection:
             if data_unit_id in LM.entities:
                 entity = LM.entities[data_unit_id]
@@ -405,7 +385,12 @@ class DataCatalog:
                 print("error")
                 continue
 
-            self.update_page(page)
+
+            if page == self.indexed_catalog.page_by_id[data_unit_id]:
+                print(f"Data unit page {row.data_unit_name} didn't change")
+            else:
+                print(f"Updating data unit page {page.id}...")
+                self.update_page(page)
 
     def save_to_local(self):
         with open(

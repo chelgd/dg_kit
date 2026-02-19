@@ -18,13 +18,13 @@ def run(
     odm_project_path = Path(config.get("logical_model", {}).get("path"))
     dbt_project_path = Path(config.get("physical_model", {}).get("path"))
 
-    dbt_parser = DBTParser(dbt_project_path, release["new_model"])
+    dbt_parser = DBTParser(dbt_project_path, release["version"])
 
     odm_project = ODMVersionedProjectParser(odm_project_path=odm_project_path)
 
     PM = dbt_parser.parse_pm()
-    odm_project.parse_version(release["new_model"], PM)
-    LM = odm_project.get_model(release["new_model"])
+    odm_project.parse_version(release["version"], PM)
+    LM = odm_project.get_model(release["version"])
 
     config["data_catalog"]["notion_token"] = environ["NOTION_TOKEN"]
     config["data_catalog"]["dc_table_id"] = environ["DATA_CATALOG_ID"]
@@ -39,3 +39,5 @@ def run(
     )
 
     DC.sync_with_model(LM)
+
+    DC.save_to_local()
