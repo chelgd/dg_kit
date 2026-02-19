@@ -34,6 +34,7 @@ class PhysicalModel:
     def register_dependency(self, dependent: Table, dependency: Table) -> None:
         add_value_to_indexed_list(self.dependencies, dependent.id, dependency.id)
 
+
 class PhysicalModelsDatabase:
     def __init__(self):
         self.physical_models: Dict[str, PhysicalModel] = {}

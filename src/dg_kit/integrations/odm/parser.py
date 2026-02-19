@@ -2,7 +2,7 @@ from datetime import datetime
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
-from typing import Optional, Set, Dict, Tuple
+from typing import Optional, Dict, Tuple
 
 from dg_kit.base.logical_model import LogicalModelsDatabase
 from dg_kit.base.business_information import BusinessInformationDatabase
@@ -95,7 +95,9 @@ class ODMParser:
         for column_obj in PM.columns.values():
             self.all_pm_objects_by_nk[column_obj.nk] = column_obj
 
-    def _parse_responsible_parties(self, elem: ET.Element) -> Optional[Tuple[Team, ...]]:
+    def _parse_responsible_parties(
+        self, elem: ET.Element
+    ) -> Optional[Tuple[Team, ...]]:
         parties = tuple(
             [
                 self.BI.all_bi_units_by_odm_id[p.text]

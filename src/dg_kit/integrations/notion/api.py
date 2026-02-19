@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional, Dict, List
+from typing import Dict, List
 
 from notion_client import Client
 
@@ -10,15 +10,10 @@ from dg_kit.base.dataclasses.data_catalog import (
     AttributePage,
     RelationPage,
     ObjectReference,
-    IndexedCatalog
-)
-from dg_kit.base.dataclasses.logical_model import (
-    Entity,
-    Attribute,
-    Relation,
+    IndexedCatalog,
 )
 from dg_kit.base.enums import (
-    DataUnitType, 
+    DataUnitType,
     DataCatalogRowProperties,
 )
 
@@ -31,12 +26,11 @@ class NotionDataCatalog(DataCatalogEngine):
         self,
         notion_config: dict,
     ):
-        self.notion = Client(auth=notion_config['notion_token'])
-        self.dc_table_id = notion_config['dc_table_id']
+        self.notion = Client(auth=notion_config["notion_token"])
+        self.dc_table_id = notion_config["dc_table_id"]
         self.notion_page_by_id: Dict[str, str] = {}
         self.row_formater = RowFormater(notion_config)
         self.page_parser = PageParser(notion_config)
-
 
     def _overwrite_page_body(self, page_id: str, new_blocks: list[dict]) -> None:
         # 1) delete all existing top-level blocks
@@ -69,16 +63,16 @@ class NotionDataCatalog(DataCatalogEngine):
 
         return blocks
 
-    def _get_references(self, index: Dict, notion_page_ids: list[str]) -> ObjectReference:
+    def _get_references(
+        self, index: Dict, notion_page_ids: list[str]
+    ) -> ObjectReference:
         return tuple(
-                    ObjectReference(
-                        id=index[notion_page_id],
-                        reference_link=notion_page_id
-                    ) for notion_page_id in notion_page_ids
-                )
+            ObjectReference(id=index[notion_page_id], reference_link=notion_page_id)
+            for notion_page_id in notion_page_ids
+        )
 
     def pull_data_catalog(self, page_size=100) -> list[DataCatalogRow]:
-        print('Pulling data from Notion...')
+        print("Pulling data from Notion...")
         rows_by_id: Dict[str, DataCatalogRow] = {}
         page_by_id: Dict[str, EntityPage | AttributePage | RelationPage] = {}
         id_by_notion_page: Dict[str, str] = {}
@@ -96,17 +90,24 @@ class NotionDataCatalog(DataCatalogEngine):
                 props = page["properties"]
                 notion_page_id = page["id"]
 
-                id = self.page_parser.get_property_value(props, DataCatalogRowProperties.ID)
-                title = self.page_parser.get_property_value(props, DataCatalogRowProperties.TITLE)
-                domain = self.page_parser.get_property_value(props, DataCatalogRowProperties.DOMAIN)
-                unit_type = DataUnitType(self.page_parser.get_property_value(props, DataCatalogRowProperties.UNIT_TYPE))
+                id = self.page_parser.get_property_value(
+                    props, DataCatalogRowProperties.ID
+                )
+                title = self.page_parser.get_property_value(
+                    props, DataCatalogRowProperties.TITLE
+                )
+                domain = self.page_parser.get_property_value(
+                    props, DataCatalogRowProperties.DOMAIN
+                )
+                unit_type = DataUnitType(
+                    self.page_parser.get_property_value(
+                        props, DataCatalogRowProperties.UNIT_TYPE
+                    )
+                )
 
                 row = DataCatalogRow(
                     id=id,
-                    reference=ObjectReference(
-                        id=id,
-                        reference_link=page["id"]
-                    ),
+                    reference=ObjectReference(id=id, reference_link=page["id"]),
                     data_unit_name=title,
                     data_unit_type=unit_type,
                     domain=domain,
@@ -115,22 +116,21 @@ class NotionDataCatalog(DataCatalogEngine):
                 )
 
                 rows_by_id[id] = row
-                
+
                 page_blocks = self._list_page_blocks(notion_page_id)
 
-
-                #if unit_type == DataUnitType.ENTITY:
-                raw_page = self.page_parser.parse_page_from_blocks(unit_type, page_blocks)
+                # if unit_type == DataUnitType.ENTITY:
+                raw_page = self.page_parser.parse_page_from_blocks(
+                    unit_type, page_blocks
+                )
                 raw_page["id"] = id
                 raw_page["reference"] = ObjectReference(
-                    id=id,
-                    reference_link=notion_page_id
+                    id=id, reference_link=notion_page_id
                 )
                 raw_page["data_unit_type"] = unit_type
                 raw_page_by_id[id] = raw_page
                 id_by_notion_page[notion_page_id] = id
                 self.notion_page_by_id[id] = ObjectReference(id, notion_page_id)
-
 
             if not resp.get("has_more"):
                 break
@@ -143,15 +143,20 @@ class NotionDataCatalog(DataCatalogEngine):
             unit_type = row.data_unit_type
 
             if unit_type == DataUnitType.ENTITY:
-
                 page_obj = EntityPage(
                     id=id,
                     reference=raw_page["reference"],
                     data_unit_type=unit_type,
                     description=raw_page["description"],
-                    pk_attributes_references=self._get_references(id_by_notion_page, raw_page["pk_attributes_references"]),
-                    attributes_references=self._get_references(id_by_notion_page, raw_page["attributes_references"]),
-                    relations_references=self._get_references(id_by_notion_page, raw_page["relations_references"]),
+                    pk_attributes_references=self._get_references(
+                        id_by_notion_page, raw_page["pk_attributes_references"]
+                    ),
+                    attributes_references=self._get_references(
+                        id_by_notion_page, raw_page["attributes_references"]
+                    ),
+                    relations_references=self._get_references(
+                        id_by_notion_page, raw_page["relations_references"]
+                    ),
                     linked_documents=raw_page["linked_documents"],
                     responsible_parties=raw_page["responsible_parties"],
                     pm_mapping_references=raw_page["pm_mapping_references"],
@@ -172,7 +177,7 @@ class NotionDataCatalog(DataCatalogEngine):
                     pm_mapping_references=raw_page["pm_mapping_references"],
                     source_systems=raw_page["source_systems"],
                 )
-            
+
             elif unit_type == DataUnitType.RELATION:
                 page_obj = RelationPage(
                     id=id,
@@ -207,19 +212,19 @@ class NotionDataCatalog(DataCatalogEngine):
         elif isinstance(page_obj, RelationPage):
             blocks = self.row_formater.build_relation_page_blocks(page_obj)
         else:
-            raise ValueError(
-                f"Unsupported data unit type: {page_obj.data_unit_type}"
-            )
+            raise ValueError(f"Unsupported data unit type: {page_obj.data_unit_type}")
 
         self._overwrite_page_body(page_obj.reference.reference_link, blocks)
-    
+
     def add_page(self, data_unit_page):
         self.update_page(data_unit_page)
 
     def update_row(self, data_catalog_row: DataCatalogRow) -> None:
         props = self.row_formater.properties_from_row(data_catalog_row)
 
-        self.notion.pages.update(page_id=data_catalog_row.reference.reference_link, properties=props)
+        self.notion.pages.update(
+            page_id=data_catalog_row.reference.reference_link, properties=props
+        )
 
     def add_row(self, data_catalog_row: DataCatalogRow) -> None:
         page = self.notion.pages.create(

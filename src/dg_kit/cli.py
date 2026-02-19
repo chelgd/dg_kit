@@ -12,7 +12,7 @@ SUPPORTED_COMMANDS = ("test", "sync")
 
 
 def _load_config(config_path: str | None) -> dict[str, Any]:
-    print(f'loading config from {config_path}')
+    print(f"loading config from {config_path}")
     path = Path(config_path)
 
     if not path.is_file():
@@ -25,13 +25,13 @@ def _load_config(config_path: str | None) -> dict[str, Any]:
     return config
 
 
-def _run_command(command_name: str, config: dict[str, Any], release: dict[str, Any]) -> None:
+def _run_command(
+    command_name: str, config: dict[str, Any], release: dict[str, Any]
+) -> None:
     module = importlib.import_module(f"dg_kit.commands.{command_name}")
     flow_run = getattr(module, "run", None)
     if flow_run is None:
-        raise AttributeError(
-            f"No such command: 'dg_kit.commands.{command_name}'"
-        )
+        raise AttributeError(f"No such command: 'dg_kit.commands.{command_name}'")
 
     flow_run(config, release)
 
@@ -44,9 +44,7 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("command", choices=SUPPORTED_COMMANDS)
     run_parser.add_argument(
         "--config",
-        help=(
-            "Path to YAML config. If omitted, ./dg_kit.yml is used when present"
-        ),
+        help=("Path to YAML config. If omitted, ./dg_kit.yml is used when present"),
     )
     run_parser.add_argument(
         "--release",

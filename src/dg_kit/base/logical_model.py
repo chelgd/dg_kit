@@ -37,17 +37,23 @@ class LogicalModel:
         self.attributes[attribute.id] = attribute
         self.all_units_by_id[attribute.id] = attribute
 
-        add_value_to_indexed_list(self.attributes_by_entity_id, attribute.entity_id, attribute)
-        
+        add_value_to_indexed_list(
+            self.attributes_by_entity_id, attribute.entity_id, attribute
+        )
+
         for pm_obj in attribute.pm_map:
             add_value_to_indexed_list(self.pm_objects_by_lm_id, attribute.id, pm_obj)
-        
+
     def register_relation(self, relation: Relation) -> None:
         self.relations[relation.id] = relation
         self.all_units_by_id[relation.id] = relation
 
-        add_value_to_indexed_list(self.relations_by_entity_id, relation.source_entity_id, relation)
-        add_value_to_indexed_list(self.relations_by_entity_id, relation.target_entity_id, relation)
+        add_value_to_indexed_list(
+            self.relations_by_entity_id, relation.source_entity_id, relation
+        )
+        add_value_to_indexed_list(
+            self.relations_by_entity_id, relation.target_entity_id, relation
+        )
 
         for pm_obj in relation.pm_map:
             add_value_to_indexed_list(self.pm_objects_by_lm_id, relation.id, pm_obj)
@@ -56,7 +62,9 @@ class LogicalModel:
         add_value_to_indexed_list(self.dependencies, dependent.id, dependency.id)
 
     def register_identifier(self, identifier: EntityIdentifier) -> None:
-        add_value_to_indexed_list(self.identifiers_by_entity_id, identifier.entity_id, identifier)
+        add_value_to_indexed_list(
+            self.identifiers_by_entity_id, identifier.entity_id, identifier
+        )
 
 
 class LogicalModelsDatabase:

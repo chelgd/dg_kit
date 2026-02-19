@@ -47,6 +47,9 @@ wheels = [
 name = "dg-kit"
 version = "0.1.1"
 source = { editable = "." }
+dependencies = [
+    { name = "pyyaml" },
+]
 
 [package.optional-dependencies]
 dbt = [
@@ -70,6 +73,7 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "notion-client", marker = "extra == 'notion'", specifier = ">=2.7.0" },
+    { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "pyyaml", marker = "extra == 'dbt'", specifier = ">=6.0.3" },
 ]
 provides-extras = ["notion", "dbt"]

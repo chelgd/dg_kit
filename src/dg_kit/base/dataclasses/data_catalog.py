@@ -69,10 +69,10 @@ class RelationPage:
     responsible_parties: Tuple[Team, ...]
     pm_mapping_references: Tuple[str, ...]
     source_systems: Tuple[str, ...]
-    #optional_source: bool
-    #optional_target: bool
-    #source_cardinality: str
-    #target_cardinality: str
+    # optional_source: bool
+    # optional_target: bool
+    # source_cardinality: str
+    # target_cardinality: str
 
 
 @dataclass(frozen=True, slots=True)

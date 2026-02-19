@@ -1,5 +1,7 @@
-import json, boto3, pickle
-from typing import Any, Dict, Optional
+import json
+import boto3
+import pickle
+from typing import Dict, Optional
 
 from .local import LocalArtifact
 
@@ -14,7 +16,7 @@ class S3Artifact(LocalArtifact):
         config: Dict,
         s3_credentials: Optional[Dict[str, str]],
         s3_bucket,
-        ):
+    ):
         self.base_object = base_object
         self.config = config
         self.buffer = BytesIO()
@@ -22,7 +24,9 @@ class S3Artifact(LocalArtifact):
         self.s3_bucket = s3_bucket
 
     def serialize(self):
-        serialized_artifact = pickle.dumps(self.base_object) #self.base_object._serialize_model()
+        serialized_artifact = pickle.dumps(
+            self.base_object
+        )  # self.base_object._serialize_model()
         self.buffer = BytesIO(serialized_artifact)
 
     def deserialize(self):
@@ -52,7 +56,7 @@ class S3Artifact(LocalArtifact):
         )
 
         # ensure a "folder" (prefix) exists by creating a zero-byte object with a trailing slash
-        original_name = self.config['name']
+        original_name = self.config["name"]
         try:
             s3.put_object(Bucket=self.s3_bucket, Key=f"{original_name}/")
         except Exception:
@@ -64,7 +68,11 @@ class S3Artifact(LocalArtifact):
         # adjust model_name so the subsequent upload_fileobj places the file under the folder
         self.model_path = f"{original_name}/{original_name}"
 
-        s3.upload_fileobj(self.buffer, self.s3_bucket, self.model_path + self.get_model_file_extension())
+        s3.upload_fileobj(
+            self.buffer,
+            self.s3_bucket,
+            self.model_path + self.get_model_file_extension(),
+        )
         # upload model params/ config as JSON into the same "folder" on S3
         params = getattr(self, "model_params", getattr(self, "model_config", None))
         if params is not None:
@@ -82,7 +90,7 @@ class S3Artifact(LocalArtifact):
 
         :param s3_uri: S3 URI where the artifact is stored, e.g. ``s3://bucket/prefix/``.
         :type s3_uri: str
-        
+
         :param local_dir: Local directory where the files should be downloaded.
         :type local_dir: str
 
@@ -104,7 +112,9 @@ class S3Artifact(LocalArtifact):
         except ClientError as e:
             code = e.response.get("Error", {}).get("Code", "")
             if code in ("NoSuchKey", "404", "NotFound"):
-                raise FileNotFoundError(f"S3 object s3://{self.s3_bucket}/{key} not found") from e
+                raise FileNotFoundError(
+                    f"S3 object s3://{self.s3_bucket}/{key} not found"
+                ) from e
             raise
 
         # read object into the in-memory buffer and prepare for deserialization
@@ -117,7 +127,7 @@ class S3Artifact(LocalArtifact):
             self.deserialize()
         except Exception as e:
             raise RuntimeError("Failed to deserialize model loaded from S3") from e
-        
+
         # attempt to load model params/config JSON from the same S3 "folder"
         params_key = f"{self.config['name']}/model_params.json"
         try:
@@ -132,7 +142,9 @@ class S3Artifact(LocalArtifact):
             code = e.response.get("Error", {}).get("Code", "")
             # ignore missing params file, re-raise other errors
             if code not in ("NoSuchKey", "404", "NotFound"):
-                raise FileNotFoundError(f"S3 object s3://{self.s3_bucket}/{key} not found") from e
+                raise FileNotFoundError(
+                    f"S3 object s3://{self.s3_bucket}/{key} not found"
+                ) from e
             raise
 
         return getattr(self, "base_object", None)
