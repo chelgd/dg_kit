@@ -3,6 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Dict, Tuple
 from os import environ
+import logging
 import pickle
 from pathlib import Path
 
@@ -21,6 +22,8 @@ from dg_kit.base.dataclasses.logical_model import (
     Attribute,
     Relation,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class DataCatalogEngine(ABC):
@@ -63,7 +66,6 @@ class DataCatalog:
         engine: DataCatalogEngine,
         config: Dict,
     ):
-        print(f'Initializing Data Catalog with engine:\n\n{engine}\n\nand configs:\n\n{config}\n')
         self.engine = engine
         self.config = config
         self.artifact_path = Path(
@@ -72,12 +74,20 @@ class DataCatalog:
 
         if self.artifact_path.exists():
             try:
+                logger.info("Initiating indexed DB from %s.", self.artifact_path)
                 self.indexed_catalog: IndexedCatalog = self.load_from_local()
             except Exception as e:
-                print(f"Couldn't initiate indexed catalog from {str(self.artifact_path)}. Encountered error:\n{e}\nCreating catalog from scratch.")
-                self.indexed_catalog = IndexedCatalog()
+                logger.warning(
+                    "Couldn't initiate indexed catalog localy from %s. Pulling catalog from remote.",
+                    self.artifact_path,
+                    exc_info=e,
+                )
+                self.pull_data_catalog()
         else:
-            print(f"Couldn't find indexed catalog localy at {str(self.artifact_path)}.\nPulling catalog from remote.")
+            logger.info(
+                "Couldn't find indexed catalog localy at %s. Pulling catalog from remote.",
+                self.artifact_path,
+            )
             self.pull_data_catalog()
 
     def pull_data_catalog(self):
@@ -96,13 +106,11 @@ class DataCatalog:
         self.save_to_local()
 
     def update_page(self, page: EntityPage | AttributePage | RelationPage) -> None:
-        print(f"Updating page: {page}")
         self.indexed_catalog.page_by_id[page.id] = page
         self.engine.update_page(page)
         self.save_to_local()
 
     def add_page(self, page: EntityPage | AttributePage | RelationPage) -> None:
-        print(f"Adding page: {page}")
         if page.id in self.indexed_catalog.page_by_id:
             raise KeyError(
                 f"Data unit page with id='{page.id}' already exists. Use update instead."
@@ -113,7 +121,6 @@ class DataCatalog:
         self.save_to_local()
 
     def add_row(self, raw_data_catalog_row: Dict) -> None:
-        print(f"Adding new row {raw_data_catalog_row}")
         if raw_data_catalog_row["id"] in self.indexed_catalog.row_by_id:
             raise KeyError(
                 f"Data unit with id='{raw_data_catalog_row['id']}' already exists. Use update instead."
@@ -136,7 +143,6 @@ class DataCatalog:
         return page_reference
 
     def delete_by_id(self, id: str) -> None:
-        print(f"Deleting {self.indexed_catalog.row_by_id[id].data_unit_name}")
         self.indexed_catalog.row_by_id.pop(id, None)
         self.indexed_catalog.page_by_id.pop(id, None)
         self.engine.delete_by_id(id)
@@ -152,9 +158,11 @@ class DataCatalog:
         rows_diff = row_ids - lm_ids
         lm_diff = lm_ids - row_ids
 
+        logger.info("Deleting data units from DC...")
         for id in rows_diff:
             self.delete_by_id(id)
 
+        logger.info("Adding new data units...")
         for data_unit_id in lm_diff:
             if data_unit_id in LM.entities:
                 data_unit_type = DataUnitType.ENTITY
@@ -249,11 +257,12 @@ class DataCatalog:
                 )
 
             else:
-                print("error")
+                logger.error("Unexpected data unit id %s while adding pages.", data_unit_id)
                 continue
 
             self.add_page(page)
 
+        logger.info("Updating updated data units...")
         for data_unit_id in rows_and_lm_intersection:
             if data_unit_id in LM.entities:
                 entity = LM.entities[data_unit_id]
@@ -304,7 +313,7 @@ class DataCatalog:
                 )
 
             else:
-                print("error")
+                logger.error("Unexpected data unit id %s while updating rows.", data_unit_id)
                 continue
 
             if row == self.indexed_catalog.row_by_id[data_unit_id]:
@@ -387,7 +396,7 @@ class DataCatalog:
                 )
 
             else:
-                print("error")
+                logger.error("Unexpected data unit id %s while updating pages.", data_unit_id)
                 continue
 
             if page == self.indexed_catalog.page_by_id[data_unit_id]:

@@ -138,7 +138,6 @@ class NotionDataCatalog(DataCatalogEngine):
 
         for id, row in rows_by_id.items():
             raw_page = raw_page_by_id[id]
-            print(f'Raw page: {raw_page}')
             raw_page['id'] = id
             unit_type = row.data_unit_type
 

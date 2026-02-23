@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -10,10 +11,20 @@ from dg_kit.commands import sync, test, pull
 
 DEFAULT_CONFIG_FILE = "dg_kit.yml"
 SUPPORTED_COMMANDS = ("test", "sync", "pull")
+LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
+
+logger = logging.getLogger(__name__)
+
+
+def _configure_logging(level: str) -> None:
+    logging.basicConfig(
+        level=getattr(logging, level.upper(), logging.INFO),
+        format="%(levelname)s: %(message)s",
+    )
 
 
 def _load_config(config_path: str | None = None) -> dict[str, Any]:
-    print(f"Loading config from {config_path}")
+    logger.info("Loading config from %s", config_path)
     path = Path(config_path)
 
     if not path.is_file():
@@ -43,6 +54,12 @@ def build_parser() -> argparse.ArgumentParser:
             "Path to YAML config. If omitted, ./dg_kit.release.yml is used when present"
         ),
     )
+    command_parser.add_argument(
+        "--log-level",
+        choices=LOG_LEVELS,
+        default="INFO",
+        help="Logging level for CLI output.",
+    )
 
     return command_parser
 
@@ -50,6 +67,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    _configure_logging(args.log_level)
 
     config = _load_config(args.config)
 
