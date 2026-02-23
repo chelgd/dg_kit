@@ -62,24 +62,27 @@ class DataCatalog:
         self,
         engine: DataCatalogEngine,
         config: Dict,
-        pull: bool = False,
     ):
+        print(f'Initializing Data Catalog with engine:\n\n{engine}\n\nand configs:\n\n{config}\n')
         self.engine = engine
         self.config = config
         self.artifact_path = Path(
             f"{self.config['data_catalog']['dc_checkpoint_path']}/{self.config['name']}.pkl"
         )
 
-        if self.artifact_path.exists() and not pull:
-            self.indexed_catalog: IndexedCatalog = self.load_from_local()
-
-        elif pull:
-            self.indexed_catalog = self.engine.pull_data_catalog()
-            self.save_to_local()
-        
+        if self.artifact_path.exists():
+            try:
+                self.indexed_catalog: IndexedCatalog = self.load_from_local()
+            except Exception as e:
+                print(f"Couldn't initiate indexed catalog from {str(self.artifact_path)}. Encountered error:\n{e}\nCreating catalog from scratch.")
+                self.indexed_catalog = IndexedCatalog()
         else:
-            self.indexed_catalog = self.engine.pull_data_catalog()
-            self.save_to_local()
+            print(f"Couldn't find indexed catalog localy at {str(self.artifact_path)}.\nPulling catalog from remote.")
+            self.pull_data_catalog()
+
+    def pull_data_catalog(self):
+        self.indexed_catalog = self.engine.pull_data_catalog()
+        self.save_to_local()
 
     def get_row_by_id(self, id: str) -> DataCatalogRow:
         return self.indexed_catalog.row_by_id.get(id)
@@ -90,11 +93,13 @@ class DataCatalog:
     def update_row(self, data_catalog_row: DataCatalogRow) -> None:
         self.indexed_catalog.row_by_id[data_catalog_row.id] = data_catalog_row
         self.engine.update_row(data_catalog_row)
+        self.save_to_local()
 
     def update_page(self, page: EntityPage | AttributePage | RelationPage) -> None:
         print(f"Updating page: {page}")
         self.indexed_catalog.page_by_id[page.id] = page
         self.engine.update_page(page)
+        self.save_to_local()
 
     def add_page(self, page: EntityPage | AttributePage | RelationPage) -> None:
         print(f"Adding page: {page}")
@@ -105,24 +110,28 @@ class DataCatalog:
 
         self.indexed_catalog.page_by_id[page.id] = page
         self.engine.add_page(page)
+        self.save_to_local()
 
     def add_row(self, raw_data_catalog_row: Dict) -> None:
         print(f"Adding new row {raw_data_catalog_row}")
-        if raw_data_catalog_row['id'] in self.indexed_catalog.row_by_id:
+        if raw_data_catalog_row["id"] in self.indexed_catalog.row_by_id:
             raise KeyError(
                 f"Data unit with id='{raw_data_catalog_row['id']}' already exists. Use update instead."
             )
 
         page_reference = self.engine.add_row(raw_data_catalog_row)
         data_catalog_row = DataCatalogRow(
-            id=raw_data_catalog_row['id'],
+            id=raw_data_catalog_row["id"],
             reference=page_reference,
-            data_unit_type=raw_data_catalog_row['data_unit_type'],
-            data_unit_name=raw_data_catalog_row['data_unit_name'],
-            domain=raw_data_catalog_row['domain'],
+            data_unit_type=raw_data_catalog_row["data_unit_type"],
+            data_unit_name=raw_data_catalog_row["data_unit_name"],
+            domain=raw_data_catalog_row["domain"],
         )
-        self.indexed_catalog.row_by_id[raw_data_catalog_row['id']] = data_catalog_row
-        self.indexed_catalog.reference_by_id[raw_data_catalog_row['id']] = page_reference
+        self.indexed_catalog.row_by_id[raw_data_catalog_row["id"]] = data_catalog_row
+        self.indexed_catalog.reference_by_id[raw_data_catalog_row["id"]] = (
+            page_reference
+        )
+        self.save_to_local()
 
         return page_reference
 
@@ -131,6 +140,7 @@ class DataCatalog:
         self.indexed_catalog.row_by_id.pop(id, None)
         self.indexed_catalog.page_by_id.pop(id, None)
         self.engine.delete_by_id(id)
+        self.save_to_local()
 
     def sync_with_model(
         self,
@@ -143,10 +153,8 @@ class DataCatalog:
         lm_diff = lm_ids - row_ids
 
         for id in rows_diff:
-            print(f"Deleting: {id}")
             self.delete_by_id(id)
 
-        print("Adding new rows...")
         for data_unit_id in lm_diff:
             if data_unit_id in LM.entities:
                 data_unit_type = DataUnitType.ENTITY
@@ -154,39 +162,38 @@ class DataCatalog:
                 data_unit_type = DataUnitType.ATTRIBUTE
             elif data_unit_id in LM.relations:
                 data_unit_type = DataUnitType.RELATION
-            
+
             data_unit = LM.all_units_by_id[data_unit_id]
 
             raw_data_catalog_row = {
-                'id': data_unit.id,
-                'data_unit_name': data_unit.name,
-                'data_unit_type': data_unit_type,
-                'domain': data_unit.domain or "Unknown",
+                "id": data_unit.id,
+                "data_unit_name": data_unit.name,
+                "data_unit_type": data_unit_type,
+                "domain": data_unit.domain or "Unknown",
             }
 
             self.add_row(raw_data_catalog_row)
 
-        print("Adding new pages...")
         for data_unit_id in lm_diff:
             if data_unit_id in LM.entities:
                 entity = LM.entities[data_unit_id]
 
                 for identifier in LM.identifiers_by_entity_id[entity.id]:
                     if identifier.is_pk:
-                        pk_attributes_references = [
+                        pk_attributes_references = tuple([
                             self.indexed_catalog.reference_by_id[
                                 attribute.id
                             ].reference_link
                             for attribute in identifier.attributes
-                        ]
-                attributes_references = [
+                        ])
+                attributes_references = tuple([
                     self.indexed_catalog.reference_by_id[attribute.id].reference_link
                     for attribute in LM.attributes_by_entity_id[entity.id]
-                ]
-                relations_references = [
+                ])
+                relations_references = tuple([
                     self.indexed_catalog.reference_by_id[relation.id].reference_link
                     for relation in LM.relations_by_entity_id[entity.id]
-                ]
+                ])
 
                 page = EntityPage(
                     id=data_unit_id,
@@ -196,8 +203,8 @@ class DataCatalog:
                     pk_attributes_references=pk_attributes_references,
                     attributes_references=attributes_references,
                     relations_references=relations_references,
-                    linked_documents=entity.documents,
-                    responsible_parties=entity.responsible_parties,
+                    linked_documents=tuple([document.name for document in entity.documents]),
+                    responsible_parties=tuple([party.name for party in entity.responsible_parties]),
                     pm_mapping_references=entity.pm_map,
                     source_systems=entity.source_systems,
                 )
@@ -215,8 +222,8 @@ class DataCatalog:
                     ].reference_link,
                     data_type=attribute.data_type,
                     sensitivity_type=attribute.sensitivity_type,
-                    linked_documents=attribute.documents,
-                    responsible_parties=attribute.responsible_parties,
+                    linked_documents=tuple([document.name for document in attribute.documents]),
+                    responsible_parties=tuple([party.name for party in attribute.responsible_parties]),
                     pm_mapping_references=attribute.pm_map,
                     source_systems=attribute.source_systems,
                 )
@@ -235,8 +242,8 @@ class DataCatalog:
                     target_entity_reference=self.indexed_catalog.reference_by_id[
                         relation.target_entity_id
                     ].reference_link,
-                    linked_documents=relation.documents,
-                    responsible_parties=relation.responsible_parties,
+                    linked_documents=tuple([document.name for document in relation.documents]),
+                    responsible_parties=tuple([party.name for party in relation.responsible_parties]),
                     pm_mapping_references=relation.pm_map,
                     source_systems=relation.source_systems,
                 )
@@ -301,11 +308,9 @@ class DataCatalog:
                 continue
 
             if row == self.indexed_catalog.row_by_id[data_unit_id]:
-                print(f"Data unit {row.data_unit_name} didn't change")
+                continue
             else:
-                print(f"Updating data unit row {row.data_unit_name}...")
                 self.update_row(row)
-
 
         for data_unit_id in rows_and_lm_intersection:
             if data_unit_id in LM.entities:
@@ -313,20 +318,20 @@ class DataCatalog:
 
                 for identifier in LM.identifiers_by_entity_id[entity.id]:
                     if identifier.is_pk:
-                        pk_attributes_references = [
+                        pk_attributes_references = tuple([
                             self.indexed_catalog.reference_by_id[
                                 attribute.id
                             ].reference_link
                             for attribute in identifier.attributes
-                        ]
-                attributes_references = [
+                        ])
+                attributes_references = tuple([
                     self.indexed_catalog.reference_by_id[attribute.id].reference_link
                     for attribute in LM.attributes_by_entity_id[entity.id]
-                ]
-                relations_references = [
+                ])
+                relations_references = tuple([
                     self.indexed_catalog.reference_by_id[relation.id].reference_link
                     for relation in LM.relations_by_entity_id[entity.id]
-                ]
+                ])
 
                 page = EntityPage(
                     id=data_unit_id,
@@ -336,8 +341,8 @@ class DataCatalog:
                     pk_attributes_references=pk_attributes_references,
                     attributes_references=attributes_references,
                     relations_references=relations_references,
-                    linked_documents=entity.documents,
-                    responsible_parties=entity.responsible_parties,
+                    linked_documents=tuple([document.name for document in entity.documents]),
+                    responsible_parties=tuple([party.name for party in entity.responsible_parties]),
                     pm_mapping_references=entity.pm_map,
                     source_systems=entity.source_systems,
                 )
@@ -355,8 +360,8 @@ class DataCatalog:
                     ].reference_link,
                     data_type=attribute.data_type,
                     sensitivity_type=attribute.sensitivity_type,
-                    linked_documents=attribute.documents,
-                    responsible_parties=attribute.responsible_parties,
+                    linked_documents=tuple([document.name for document in attribute.documents]),
+                    responsible_parties=tuple([party.name for party in attribute.responsible_parties]),
                     pm_mapping_references=attribute.pm_map,
                     source_systems=attribute.source_systems,
                 )
@@ -375,8 +380,8 @@ class DataCatalog:
                     target_entity_reference=self.indexed_catalog.reference_by_id[
                         relation.target_entity_id
                     ].reference_link,
-                    linked_documents=relation.documents,
-                    responsible_parties=relation.responsible_parties,
+                    linked_documents=tuple([document.name for document in relation.documents]),
+                    responsible_parties=tuple([party.name for party in relation.responsible_parties]),
                     pm_mapping_references=relation.pm_map,
                     source_systems=relation.source_systems,
                 )
@@ -385,11 +390,9 @@ class DataCatalog:
                 print("error")
                 continue
 
-
             if page == self.indexed_catalog.page_by_id[data_unit_id]:
-                print(f"Data unit page {row.data_unit_name} didn't change")
+                continue
             else:
-                print(f"Updating data unit page {page.id}...")
                 self.update_page(page)
 
     def save_to_local(self):

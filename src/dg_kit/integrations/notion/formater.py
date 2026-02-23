@@ -83,7 +83,7 @@ class RowFormater:
         if entity_page.description:
             blocks.append(self._para(entity_page.description))
         else:
-            blocks.append(self._para("—"))
+            blocks.append(self._para(""))
 
         # Identifiers
         blocks.append(
@@ -95,7 +95,7 @@ class RowFormater:
                     self._para_rich_text([self._rt_page_mention(attribute_ref)])
                 )
         else:
-            blocks.append(self._para("—"))
+            blocks.append(self._para(""))
 
         # Attributes
         blocks.append(
@@ -107,7 +107,7 @@ class RowFormater:
                     self._para_rich_text([self._rt_page_mention(attribute_page_id)])
                 )
         else:
-            blocks.append(self._para("—"))
+            blocks.append(self._para(""))
 
         # Relations
         blocks.append(
@@ -119,7 +119,7 @@ class RowFormater:
                     self._para_rich_text([self._rt_page_mention(relation_page_id)])
                 )
         else:
-            blocks.append(self._para("—"))
+            blocks.append(self._para(""))
 
         # Linked docs
         blocks.append(self._h2(self.config["section_name_mapping"]["linked_documents"]))
@@ -130,7 +130,7 @@ class RowFormater:
                 )
                 blocks.append(document_link)
         else:
-            blocks.append(self._para("—"))
+            blocks.append(self._para(""))
 
         # Responsible parties
         blocks.append(
@@ -143,7 +143,7 @@ class RowFormater:
                 blocks.append(party_name)
 
         else:
-            blocks.append(self._para("—"))
+            blocks.append(self._para(""))
 
         # Mapping to physical model
         blocks.append(
@@ -155,7 +155,7 @@ class RowFormater:
                     self._bullet([self._rt_text(pm_obj_reference.name)])
                 )  # or _rt_user_mention(not_user_id)
         else:
-            blocks.append(self._para("—"))
+            blocks.append(self._para(""))
 
         # Source systems
         blocks.append(self._h2(self.config["section_name_mapping"]["source_systems"]))
@@ -163,7 +163,7 @@ class RowFormater:
             for source_system in entity_page.source_systems:
                 blocks.append(self._bullet([self._rt_text(source_system)]))
         else:
-            blocks.append(self._para("—"))
+            blocks.append(self._para(""))
 
         return blocks
 
@@ -176,7 +176,7 @@ class RowFormater:
         if attribute_page.description:
             blocks.append(self._para(attribute_page.description))
         else:
-            blocks.append(self._para("—"))
+            blocks.append(self._para(""))
 
         # Entity
         blocks.append(
@@ -189,21 +189,21 @@ class RowFormater:
                 )
             )
         else:
-            blocks.append(self._para("—"))
+            blocks.append(self._para(""))
 
         # Data Type
         blocks.append(self._h2(self.config["section_name_mapping"]["data_type"]))
         if attribute_page.data_type:
             blocks.append(self._para(attribute_page.data_type))
         else:
-            blocks.append(self._para("—"))
+            blocks.append(self._para(""))
 
         # Sensetivity Type
         blocks.append(self._h2(self.config["section_name_mapping"]["sensitivity_type"]))
         if attribute_page.sensitivity_type:
             blocks.append(self._para(attribute_page.sensitivity_type))
         else:
-            blocks.append(self._para("—"))
+            blocks.append(self._para(""))
 
         # Linked docs
         blocks.append(self._h2(self.config["section_name_mapping"]["linked_documents"]))
@@ -214,7 +214,7 @@ class RowFormater:
                 )
                 blocks.append(document_link)
         else:
-            blocks.append(self._para("—"))
+            blocks.append(self._para(""))
 
         # Responsible parties
         blocks.append(
@@ -222,9 +222,9 @@ class RowFormater:
         )
         if attribute_page.responsible_parties:
             for party in attribute_page.responsible_parties:
-                blocks.append(self._bullet([self._rt_text(party.name)]))
+                blocks.append(self._bullet([self._rt_text(party)]))
         else:
-            blocks.append(self._para("—"))
+            blocks.append(self._para(""))
 
         # Mapping to Physical Model layer tables
         blocks.append(
@@ -234,7 +234,7 @@ class RowFormater:
             for pm_obj_reference in attribute_page.pm_mapping_references:
                 blocks.append(self._bullet([self._rt_text(pm_obj_reference.name)]))
         else:
-            blocks.append(self._para("—"))
+            blocks.append(self._para(""))
 
         # Source systems
         blocks.append(self._h2(self.config["section_name_mapping"]["source_systems"]))
@@ -242,7 +242,7 @@ class RowFormater:
             for source_system in attribute_page.source_systems:
                 blocks.append(self._bullet([self._rt_text(source_system)]))
         else:
-            blocks.append(self._para("—"))
+            blocks.append(self._para(""))
 
         return blocks
 
@@ -255,7 +255,7 @@ class RowFormater:
         if relation_page.description:
             blocks.append(self._para(relation_page.description))
         else:
-            blocks.append(self._para("—"))
+            blocks.append(self._para(""))
 
         # Source entity
         blocks.append(
@@ -268,7 +268,7 @@ class RowFormater:
                 )
             )
         else:
-            blocks.append(self._para("—"))
+            blocks.append(self._para(""))
 
         # Target entity
         blocks.append(
@@ -281,7 +281,7 @@ class RowFormater:
                 )
             )
         else:
-            blocks.append(self._para("—"))
+            blocks.append(self._para(""))
 
         # Linked docs
         blocks.append(self._h2(self.config["section_name_mapping"]["linked_documents"]))
@@ -292,7 +292,7 @@ class RowFormater:
                 )
                 blocks.append(document_link)
         else:
-            blocks.append(self._para("—"))
+            blocks.append(self._para(""))
 
         # Responsible parties
         blocks.append(
@@ -304,7 +304,7 @@ class RowFormater:
                     self._bullet([self._rt_text(party.name)])
                 )  # or _rt_user_mention(not_user_id)
         else:
-            blocks.append(self._para("—"))
+            blocks.append(self._para(""))
 
         # Mapping to core layer tables
         blocks.append(
@@ -316,7 +316,7 @@ class RowFormater:
                     self._bullet([self._rt_text(pm_obj_reference.name)])
                 )  # or _rt_user_mention(not_user_id)
         else:
-            blocks.append(self._para("—"))
+            blocks.append(self._para(""))
 
         # Master source systems
         blocks.append(self._h2(self.config["section_name_mapping"]["source_systems"]))
@@ -324,6 +324,6 @@ class RowFormater:
             for source_system in relation_page.source_systems:
                 blocks.append(self._bullet([self._rt_text(source_system)]))
         else:
-            blocks.append(self._para("—"))
+            blocks.append(self._para(""))
 
         return blocks

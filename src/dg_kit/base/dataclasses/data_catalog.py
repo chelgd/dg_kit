@@ -4,7 +4,7 @@ from typing import Optional, Tuple, Dict
 
 from datetime import datetime
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from dg_kit.base.enums import DataUnitType
 from dg_kit.base.dataclasses.business_information import Document, Team
@@ -23,8 +23,6 @@ class DataCatalogRow:
     data_unit_type: DataUnitType
     data_unit_name: str
     domain: str
-    last_edited_time: Optional[datetime] = None
-    created_time: Optional[datetime] = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,6 +75,6 @@ class RelationPage:
 
 @dataclass(frozen=True, slots=True)
 class IndexedCatalog:
-    row_by_id: Dict[str, DataCatalogRow]
-    reference_by_id: Dict[str, ObjectReference]
-    page_by_id: Dict[str, EntityPage | AttributePage | RelationPage]
+    row_by_id: Dict[str, DataCatalogRow] = field(default_factory=dict)
+    reference_by_id: Dict[str, ObjectReference] = field(default_factory=dict)
+    page_by_id: Dict[str, EntityPage | AttributePage | RelationPage] = field(default_factory=dict)
