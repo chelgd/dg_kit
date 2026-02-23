@@ -5,11 +5,8 @@ from typing import Any
 
 
 from pathlib import Path
-from os import environ
 from dg_kit.integrations.dbt.parser import DBTParser
 from dg_kit.integrations.odm.parser import ODMVersionedProjectParser
-from dg_kit.base.data_catalog import DataCatalog
-from dg_kit.integrations.notion.api import NotionDataCatalog
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +26,6 @@ def run(
     odm_project.parse_version(release["version"], PM)
     LM = odm_project.get_model(release["version"])
 
-
     # convention_validator = ConventionValidator(
     #    LM,
     #    PM,
@@ -45,7 +41,6 @@ def run(
             continue
 
     lm_objects_by_pm_id = {}
-    
 
     for table in PM.tables.values():
         layer_name = PM.layers[table.layer_id].name

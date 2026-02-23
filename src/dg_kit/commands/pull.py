@@ -18,6 +18,9 @@ def run(
         notion_config=config["data_catalog"],
     )
 
-    DC = DataCatalog(engine=ndc_engine, config=config,)
+    DC = DataCatalog(
+        engine=ndc_engine,
+        config=config,
+    )
 
     DC.pull_data_catalog()

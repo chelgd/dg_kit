@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from typing import Optional, Tuple, Dict
+from typing import Tuple, Dict
 
-from datetime import datetime
 
 from dataclasses import dataclass, field
 
@@ -77,4 +76,6 @@ class RelationPage:
 class IndexedCatalog:
     row_by_id: Dict[str, DataCatalogRow] = field(default_factory=dict)
     reference_by_id: Dict[str, ObjectReference] = field(default_factory=dict)
-    page_by_id: Dict[str, EntityPage | AttributePage | RelationPage] = field(default_factory=dict)
+    page_by_id: Dict[str, EntityPage | AttributePage | RelationPage] = field(
+        default_factory=dict
+    )

@@ -34,9 +34,7 @@ class PageParser:
         else:
             return None
 
-    def _get_prop_from_blocks(
-        self, property_name: str, blocks: list[dict]
-    ) -> dict:
+    def _get_prop_from_blocks(self, property_name: str, blocks: list[dict]) -> dict:
         if property_name == "description":
             # extract description from blocks
             description = ""
@@ -149,7 +147,6 @@ class PageParser:
                         target_entity_id = rtext["mention"]["page"]["id"]
             return (property_name, target_entity_id)
 
-
     def parse_page_from_blocks(
         self,
         data_unit_type: DataUnitType,
@@ -166,7 +163,9 @@ class PageParser:
             btype = block.get("type")
             if btype == "heading_2":
                 if current_section_blocks and current_section:
-                    prop_key, prop_value = self._get_prop_from_blocks(current_section, current_section_blocks)
+                    prop_key, prop_value = self._get_prop_from_blocks(
+                        current_section, current_section_blocks
+                    )
                     raw_page[prop_key] = prop_value
                     current_section_blocks = []
                     current_section = self.reversed_mapping[
@@ -181,7 +180,9 @@ class PageParser:
                 current_section_blocks.append(block)
 
                 if cursor == len_blocks - 1:
-                    prop_key, prop_value = self._get_prop_from_blocks(current_section, current_section_blocks)
+                    prop_key, prop_value = self._get_prop_from_blocks(
+                        current_section, current_section_blocks
+                    )
                     raw_page[prop_key] = prop_value
 
             cursor += 1

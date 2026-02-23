@@ -188,20 +188,28 @@ class DataCatalog:
 
                 for identifier in LM.identifiers_by_entity_id[entity.id]:
                     if identifier.is_pk:
-                        pk_attributes_references = tuple([
-                            self.indexed_catalog.reference_by_id[
-                                attribute.id
-                            ].reference_link
-                            for attribute in identifier.attributes
-                        ])
-                attributes_references = tuple([
-                    self.indexed_catalog.reference_by_id[attribute.id].reference_link
-                    for attribute in LM.attributes_by_entity_id[entity.id]
-                ])
-                relations_references = tuple([
-                    self.indexed_catalog.reference_by_id[relation.id].reference_link
-                    for relation in LM.relations_by_entity_id[entity.id]
-                ])
+                        pk_attributes_references = tuple(
+                            [
+                                self.indexed_catalog.reference_by_id[
+                                    attribute.id
+                                ].reference_link
+                                for attribute in identifier.attributes
+                            ]
+                        )
+                attributes_references = tuple(
+                    [
+                        self.indexed_catalog.reference_by_id[
+                            attribute.id
+                        ].reference_link
+                        for attribute in LM.attributes_by_entity_id[entity.id]
+                    ]
+                )
+                relations_references = tuple(
+                    [
+                        self.indexed_catalog.reference_by_id[relation.id].reference_link
+                        for relation in LM.relations_by_entity_id[entity.id]
+                    ]
+                )
 
                 page = EntityPage(
                     id=data_unit_id,
@@ -211,8 +219,12 @@ class DataCatalog:
                     pk_attributes_references=pk_attributes_references,
                     attributes_references=attributes_references,
                     relations_references=relations_references,
-                    linked_documents=tuple([document.name for document in entity.documents]),
-                    responsible_parties=tuple([party.name for party in entity.responsible_parties]),
+                    linked_documents=tuple(
+                        [document.name for document in entity.documents]
+                    ),
+                    responsible_parties=tuple(
+                        [party.name for party in entity.responsible_parties]
+                    ),
                     pm_mapping_references=entity.pm_map,
                     source_systems=entity.source_systems,
                 )
@@ -230,8 +242,12 @@ class DataCatalog:
                     ].reference_link,
                     data_type=attribute.data_type,
                     sensitivity_type=attribute.sensitivity_type,
-                    linked_documents=tuple([document.name for document in attribute.documents]),
-                    responsible_parties=tuple([party.name for party in attribute.responsible_parties]),
+                    linked_documents=tuple(
+                        [document.name for document in attribute.documents]
+                    ),
+                    responsible_parties=tuple(
+                        [party.name for party in attribute.responsible_parties]
+                    ),
                     pm_mapping_references=attribute.pm_map,
                     source_systems=attribute.source_systems,
                 )
@@ -250,14 +266,20 @@ class DataCatalog:
                     target_entity_reference=self.indexed_catalog.reference_by_id[
                         relation.target_entity_id
                     ].reference_link,
-                    linked_documents=tuple([document.name for document in relation.documents]),
-                    responsible_parties=tuple([party.name for party in relation.responsible_parties]),
+                    linked_documents=tuple(
+                        [document.name for document in relation.documents]
+                    ),
+                    responsible_parties=tuple(
+                        [party.name for party in relation.responsible_parties]
+                    ),
                     pm_mapping_references=relation.pm_map,
                     source_systems=relation.source_systems,
                 )
 
             else:
-                logger.error("Unexpected data unit id %s while adding pages.", data_unit_id)
+                logger.error(
+                    "Unexpected data unit id %s while adding pages.", data_unit_id
+                )
                 continue
 
             self.add_page(page)
@@ -313,7 +335,9 @@ class DataCatalog:
                 )
 
             else:
-                logger.error("Unexpected data unit id %s while updating rows.", data_unit_id)
+                logger.error(
+                    "Unexpected data unit id %s while updating rows.", data_unit_id
+                )
                 continue
 
             if row == self.indexed_catalog.row_by_id[data_unit_id]:
@@ -327,20 +351,28 @@ class DataCatalog:
 
                 for identifier in LM.identifiers_by_entity_id[entity.id]:
                     if identifier.is_pk:
-                        pk_attributes_references = tuple([
-                            self.indexed_catalog.reference_by_id[
-                                attribute.id
-                            ].reference_link
-                            for attribute in identifier.attributes
-                        ])
-                attributes_references = tuple([
-                    self.indexed_catalog.reference_by_id[attribute.id].reference_link
-                    for attribute in LM.attributes_by_entity_id[entity.id]
-                ])
-                relations_references = tuple([
-                    self.indexed_catalog.reference_by_id[relation.id].reference_link
-                    for relation in LM.relations_by_entity_id[entity.id]
-                ])
+                        pk_attributes_references = tuple(
+                            [
+                                self.indexed_catalog.reference_by_id[
+                                    attribute.id
+                                ].reference_link
+                                for attribute in identifier.attributes
+                            ]
+                        )
+                attributes_references = tuple(
+                    [
+                        self.indexed_catalog.reference_by_id[
+                            attribute.id
+                        ].reference_link
+                        for attribute in LM.attributes_by_entity_id[entity.id]
+                    ]
+                )
+                relations_references = tuple(
+                    [
+                        self.indexed_catalog.reference_by_id[relation.id].reference_link
+                        for relation in LM.relations_by_entity_id[entity.id]
+                    ]
+                )
 
                 page = EntityPage(
                     id=data_unit_id,
@@ -350,8 +382,12 @@ class DataCatalog:
                     pk_attributes_references=pk_attributes_references,
                     attributes_references=attributes_references,
                     relations_references=relations_references,
-                    linked_documents=tuple([document.name for document in entity.documents]),
-                    responsible_parties=tuple([party.name for party in entity.responsible_parties]),
+                    linked_documents=tuple(
+                        [document.name for document in entity.documents]
+                    ),
+                    responsible_parties=tuple(
+                        [party.name for party in entity.responsible_parties]
+                    ),
                     pm_mapping_references=entity.pm_map,
                     source_systems=entity.source_systems,
                 )
@@ -369,8 +405,12 @@ class DataCatalog:
                     ].reference_link,
                     data_type=attribute.data_type,
                     sensitivity_type=attribute.sensitivity_type,
-                    linked_documents=tuple([document.name for document in attribute.documents]),
-                    responsible_parties=tuple([party.name for party in attribute.responsible_parties]),
+                    linked_documents=tuple(
+                        [document.name for document in attribute.documents]
+                    ),
+                    responsible_parties=tuple(
+                        [party.name for party in attribute.responsible_parties]
+                    ),
                     pm_mapping_references=attribute.pm_map,
                     source_systems=attribute.source_systems,
                 )
@@ -389,14 +429,20 @@ class DataCatalog:
                     target_entity_reference=self.indexed_catalog.reference_by_id[
                         relation.target_entity_id
                     ].reference_link,
-                    linked_documents=tuple([document.name for document in relation.documents]),
-                    responsible_parties=tuple([party.name for party in relation.responsible_parties]),
+                    linked_documents=tuple(
+                        [document.name for document in relation.documents]
+                    ),
+                    responsible_parties=tuple(
+                        [party.name for party in relation.responsible_parties]
+                    ),
                     pm_mapping_references=relation.pm_map,
                     source_systems=relation.source_systems,
                 )
 
             else:
-                logger.error("Unexpected data unit id %s while updating pages.", data_unit_id)
+                logger.error(
+                    "Unexpected data unit id %s while updating pages.", data_unit_id
+                )
                 continue
 
             if page == self.indexed_catalog.page_by_id[data_unit_id]:
