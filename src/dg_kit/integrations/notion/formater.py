@@ -125,9 +125,7 @@ class RowFormater:
         blocks.append(self._h2(self.config["section_name_mapping"]["linked_documents"]))
         if entity_page.linked_documents:
             for document in entity_page.linked_documents:
-                document_link = self._bullet(
-                    [self._rt_text(document.name, url=document.reference)]
-                )
+                document_link = self._bullet([self._rt_text(document)])
                 blocks.append(document_link)
         else:
             blocks.append(self._para(""))
@@ -138,7 +136,7 @@ class RowFormater:
         )
         if entity_page.responsible_parties:
             for party in entity_page.responsible_parties:
-                party_name = self._bullet([self._rt_text(party.name)])
+                party_name = self._bullet([self._rt_text(party)])
 
                 blocks.append(party_name)
 
@@ -209,9 +207,7 @@ class RowFormater:
         blocks.append(self._h2(self.config["section_name_mapping"]["linked_documents"]))
         if attribute_page.linked_documents:
             for document in attribute_page.linked_documents:
-                document_link = self._bullet(
-                    [self._rt_text(document.name, url=document.reference)]
-                )
+                document_link = document_link = self._bullet([self._rt_text(document)])
                 blocks.append(document_link)
         else:
             blocks.append(self._para(""))
@@ -287,9 +283,7 @@ class RowFormater:
         blocks.append(self._h2(self.config["section_name_mapping"]["linked_documents"]))
         if relation_page.linked_documents:
             for document in relation_page.linked_documents:
-                document_link = self._bullet(
-                    [self._rt_text(document.name, url=document.reference)]
-                )
+                document_link = document_link = self._bullet([self._rt_text(document)])
                 blocks.append(document_link)
         else:
             blocks.append(self._para(""))
@@ -301,7 +295,7 @@ class RowFormater:
         if relation_page.responsible_parties:
             for party in relation_page.responsible_parties:
                 blocks.append(
-                    self._bullet([self._rt_text(party.name)])
+                    self._bullet([self._rt_text(party)])
                 )  # or _rt_user_mention(not_user_id)
         else:
             blocks.append(self._para(""))
