@@ -74,19 +74,16 @@ class DataCatalog:
 
         if self.artifact_path.exists():
             try:
-                logger.info("Initiating indexed DB from %s.", self.artifact_path)
+                logger.info(f"Initiating indexed DB from {self.artifact_path}.")
                 self.indexed_catalog: IndexedCatalog = self.load_from_local()
-            except Exception as e:
-                logger.warning(
-                    "Couldn't initiate indexed catalog localy from %s. Pulling catalog from remote.",
-                    self.artifact_path,
-                    exc_info=e,
+            except Exception:
+                logger.error(
+                    "Couldn't initiate indexed catalog localy from {self.artifact_path}. Pulling catalog from remote."
                 )
                 self.pull_data_catalog()
         else:
             logger.info(
-                "Couldn't find indexed catalog localy at %s. Pulling catalog from remote.",
-                self.artifact_path,
+                "Couldn't find indexed catalog localy at {self.artifact_path}. Pulling catalog from remote."
             )
             self.pull_data_catalog()
 
@@ -278,7 +275,7 @@ class DataCatalog:
 
             else:
                 logger.error(
-                    "Unexpected data unit id %s while adding pages.", data_unit_id
+                    f"Unexpected data unit id {data_unit_id} while adding pages."
                 )
                 continue
 
@@ -336,7 +333,7 @@ class DataCatalog:
 
             else:
                 logger.error(
-                    "Unexpected data unit id %s while updating rows.", data_unit_id
+                    f"Unexpected data unit id {data_unit_id} while updating rows."
                 )
                 continue
 
@@ -441,8 +438,9 @@ class DataCatalog:
 
             else:
                 logger.error(
-                    "Unexpected data unit id %s while updating pages.", data_unit_id
+                    f"Unexpected data unit id {data_unit_id} while updating pages."
                 )
+
                 continue
 
             if page == self.indexed_catalog.page_by_id[data_unit_id]:

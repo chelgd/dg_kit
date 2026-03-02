@@ -169,6 +169,21 @@ class ODMParser:
 
         return props
 
+    def _parse_pm_map_str(self, pm_map_str):
+        pm_map_list = pm_map_str.split(",") if pm_map_str else list()
+
+        pm_objects_list = []
+
+        if pm_map_list:
+            for nk in pm_map_list:
+                if nk in self.all_pm_objects_by_nk:
+                    pm_objects_list.append(self.all_pm_objects_by_nk[nk])
+                else:
+                    # Need to implement parser level issues registry.
+                    print("mistake")
+
+        return tuple(pm_objects_list)
+
     def parse_bi(self) -> BusinessInformation:
         # Documents
         for seg in self.documents_path.iterdir():
@@ -286,13 +301,7 @@ class ODMParser:
                 entity_domain = entity_dynamic_props.get("domain")
 
                 entity_pm_map_str = entity_dynamic_props.get("pm_map")
-                entity_pm_map_tuple = (
-                    entity_pm_map_str.split(",") if entity_pm_map_str else tuple()
-                )
-                if entity_pm_map_tuple:
-                    entity_pm_map_tuple = tuple(
-                        self.all_pm_objects_by_nk[nk] for nk in entity_pm_map_tuple
-                    )
+                entity_pm_map_tuple = self._parse_pm_map_str(entity_pm_map_str)
 
                 entity_source_systems_str = entity_dynamic_props.get("source_systems")
                 entity_source_systems_tuple = (
@@ -346,21 +355,7 @@ class ODMParser:
                         continue
 
                     attr_pm_map_str = attribute_dynamic_props.get("pm_map")
-                    attr_pm_map_tuple = (
-                        tuple(attr_pm_map_str.split(","))
-                        if attr_pm_map_str
-                        else tuple()
-                    )
-                    if attr_pm_map_tuple:
-                        try:
-                            attr_pm_map_tuple = tuple(
-                                self.all_pm_objects_by_nk[nk]
-                                for nk in attr_pm_map_tuple
-                            )
-                        except KeyError as e:
-                            raise ValueError(
-                                f"ODM logical model has unknown Physical Model mapping for attribute '{attr_xml.attrib['name']}' in entity '{entity.name}': {e}"
-                            )
+                    attr_pm_map_tuple = self._parse_pm_map_str(attr_pm_map_str)
 
                     attr_source_systems_str = attribute_dynamic_props.get(
                         "source_systems"
@@ -415,13 +410,7 @@ class ODMParser:
                 )
 
                 relation_pm_map_str = relation_dynamic_props.get("pm_map")
-                relation_pm_map_tuple = (
-                    relation_pm_map_str.split(",") if relation_pm_map_str else tuple()
-                )
-                if relation_pm_map_tuple:
-                    relation_pm_map_tuple = tuple(
-                        self.all_pm_objects_by_nk[nk] for nk in relation_pm_map_tuple
-                    )
+                relation_pm_map_tuple = self._parse_pm_map_str(relation_pm_map_str)
 
                 relation_dynamic_props_str = relation_dynamic_props.get(
                     "source_systems"

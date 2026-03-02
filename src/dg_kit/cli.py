@@ -49,11 +49,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     command_parser.add_argument(
-        "--release",
+        "--convention",
         help=(
-            "Path to YAML config. If omitted, ./dg_kit.release.yml is used when present"
+            "Path to YAML config. If omitted, ./dg_kit.convention.yml is used when present"
         ),
     )
+
     command_parser.add_argument(
         "--log-level",
         choices=LOG_LEVELS,
@@ -65,6 +66,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    sys_exit_status = 0
+
     parser = build_parser()
     args = parser.parse_args(argv)
     _configure_logging(args.log_level)
@@ -72,17 +75,16 @@ def main(argv: list[str] | None = None) -> int:
     config = _load_config(args.config)
 
     if args.command == "sync":
-        release_config = _load_config(args.release)
-        sync.run(config, release_config)
+        sys_exit_status = sync.run(config)
 
     elif args.command == "test":
-        release_config = _load_config(args.release)
-        test.run(config, release_config)
+        convention_config = _load_config(args.convention)
+        sys_exit_status = test.run(config, convention_config)
 
     elif args.command == "pull":
-        pull.run(config)
+        sys_exit_status = pull.run(config)
 
-    return 0
+    return sys_exit_status
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 from pathlib import Path
 
@@ -19,11 +20,14 @@ _SOURCE_RE = re.compile(
     re.IGNORECASE,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class DBTPhysicalModel(PhysicalModel):
     def __init__(self, version: str):
         super().__init__(version)
         self.all_tables_by_nk: dict[str, Table] = {}
+        self.all_dbt_tables_by_model: dict[str, Table] = {}
 
 
 class DBTParser:
@@ -138,6 +142,7 @@ class DBTParser:
 
             self.PM.register_table(table_obj)
             self.PM.all_tables_by_nk[table_nk] = table_obj
+            self.PM.all_dbt_tables_by_model[model_yml_path.stem] = table_obj
 
             # 2) Parse columns
             columns = model["columns"]
@@ -183,6 +188,7 @@ class DBTParser:
 
             self.PM.register_table(table_obj)
             self.PM.all_tables_by_nk[table_nk] = table_obj
+            self.PM.all_dbt_tables_by_model[seed_yml_path.stem] = table_obj
 
             # 2) Parse columns
             columns = seed["columns"]
@@ -213,17 +219,27 @@ class DBTParser:
         """
         Register dependency nks found in SQL via ref()/source().
         """
+        dependent = self.PM.all_tables_by_nk.get(f"{layer_name}.{model_name}")
+        if not isinstance(dependent, Table):
+            raise Exception("Dependent object should be of class Table.")
+
         text = model_sql_path.read_text(encoding="utf-8")
 
         for m in _REF_RE.finditer(text):
             table_name = m.group("table_name")
-            schema_name = m.group("schema_name")
-            table_nk = schema_name + "." + table_name if schema_name else table_name
-            table_obj = self.PM.all_tables_by_nk.get(table_nk)
-            if isinstance(table_obj, Table):
-                self.PM.register_dependency(
-                    self.PM.all_tables_by_nk[layer_name + "." + model_name], table_obj
+            schema_or_package_name = m.group("schema_name")
+            table_obj = None
+
+            if schema_or_package_name:
+                table_obj = self.PM.all_tables_by_nk.get(
+                    f"{schema_or_package_name}.{table_name}"
                 )
+            elif not schema_or_package_name and table_name:
+                table_obj = self.PM.all_dbt_tables_by_model.get(table_name)
+            else:
+                raise Exception(f"Unknown model reference in {str(model_sql_path)}")
+
+            self.PM.register_dependency(dependent, table_obj)
 
         for m in _SOURCE_RE.finditer(text):
             table_name = m.group("table_name")
@@ -231,11 +247,10 @@ class DBTParser:
             table_nk = schema_name + "." + table_name
             table_obj = self.PM.all_tables_by_nk.get(table_nk)
             if isinstance(table_obj, Table):
-                self.PM.register_dependency(
-                    self.PM.all_tables_by_nk[layer_name + "." + model_name], table_obj
-                )
+                self.PM.register_dependency(dependent, table_obj)
 
     def parse_pm(self) -> PhysicalModel:
+        # 0) parse models into registry
         # 1) parse source definitions
         for source_yml_path in self.models_path.glob("*.yml"):
             self._parse_source_model_yml(source_yml_path)
