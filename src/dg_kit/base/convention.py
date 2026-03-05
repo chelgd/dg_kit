@@ -1,3 +1,5 @@
+"""Convention rule registration and validation orchestration."""
+
 from __future__ import annotations
 
 from typing import List, Any
@@ -18,7 +20,16 @@ logger = logging.getLogger(__name__)
 
 
 class Convention:
+    """Store convention rules and execute convention checks."""
+
     def __init__(self, name: str, convention_config: dict[str, Any] = None):
+        """Initialize a convention definition from configuration.
+
+        :param name: Convention name.
+        :type name: str
+        :param convention_config: Convention settings and rule definitions.
+        :type convention_config: dict[str, Any] | None
+        """
         self.name = name
         self.convention_config = convention_config
         self.rules: List[ConventionRule] = []
@@ -44,6 +55,17 @@ class Convention:
         severity: ConventionRuleSeverity,
         description: str,
     ):
+        """Register a validation rule on the convention instance.
+
+        :param name: Rule name.
+        :type name: str
+        :param severity: Default severity assigned to rule breaches.
+        :type severity: ConventionRuleSeverity
+        :param description: Human-readable rule description.
+        :type description: str
+        :returns: Decorator that registers the wrapped rule function.
+        :rtype: ConventionRuleFn
+        """
         def rule_registry(fn: ConventionRuleFn) -> ConventionRuleFn:
             self.rules.append(ConventionRule(name, severity, description, fn))
             return fn
@@ -51,6 +73,17 @@ class Convention:
         return rule_registry
 
     def allowed_dependencies(self, LM: LogicalModel, PM: PhysicalModel, **kwargs):
+        """Validate that dependencies only target allowed layers.
+
+        :param LM: Logical model, unused but accepted for rule signature compatibility.
+        :type LM: LogicalModel
+        :param PM: Physical model containing dependency information.
+        :type PM: PhysicalModel
+        :param kwargs: Rule configuration with allowed layer mappings and severity.
+        :type kwargs: dict[str, Any]
+        :returns: Detected convention breaches.
+        :rtype: list[ConventionBreach]
+        """
         issues = []
         missing_allowed_dependencies = []
         rules_by_layer = kwargs.get("rules", {})
@@ -90,6 +123,17 @@ class Convention:
         return issues
 
     def regex_by_layer(self, LM: LogicalModel, PM: PhysicalModel, **kwargs):
+        """Validate table names against layer-specific regular expressions.
+
+        :param LM: Logical model, unused but accepted for rule signature compatibility.
+        :type LM: LogicalModel
+        :param PM: Physical model containing table definitions.
+        :type PM: PhysicalModel
+        :param kwargs: Rule configuration with regex definitions and severity.
+        :type kwargs: dict[str, Any]
+        :returns: Detected convention breaches.
+        :rtype: list[ConventionBreach]
+        """
         issues = []
 
         regexp_by_layer_name = {}
@@ -128,12 +172,28 @@ class Convention:
 
 
 class ConventionValidator:
+    """Run all configured convention rules against logical and physical models."""
+
     def __init__(self, lm: LogicalModel, pm: PhysicalModel, convention: Convention):
+        """Initialize the validator.
+
+        :param lm: Logical model to validate.
+        :type lm: LogicalModel
+        :param pm: Physical model to validate.
+        :type pm: PhysicalModel
+        :param convention: Convention containing validation rules.
+        :type convention: Convention
+        """
         self.lm = lm
         self.pm = pm
         self.convention = convention
 
     def validate(self) -> List[ConventionBreach]:
+        """Execute all configured rules and collect breaches.
+
+        :returns: Validation issues found across all rules.
+        :rtype: list[ConventionBreach]
+        """
         issues: List[ConventionBreach] = []
 
         logger.info(

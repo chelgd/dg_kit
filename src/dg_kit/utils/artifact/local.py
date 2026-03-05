@@ -1,3 +1,5 @@
+"""Local filesystem persistence helpers for serialized artifacts."""
+
 import pickle
 from typing import Dict
 

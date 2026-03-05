@@ -1,3 +1,5 @@
+"""Containers for logical model metadata and cross-object indexes."""
+
 from __future__ import annotations
 from typing import Dict, List
 

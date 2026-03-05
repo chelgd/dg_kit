@@ -1,3 +1,5 @@
+"""Formatters for translating catalog dataclasses into Notion payloads."""
+
 from __future__ import annotations
 from typing import Optional
 

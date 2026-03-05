@@ -1,3 +1,9 @@
+"""Implementation of the ``dg_kit pull`` command.
+
+This module downloads the current data catalog state from the configured
+remote backend and persists the local checkpoint.
+"""
+
 from __future__ import annotations
 
 from typing import Any

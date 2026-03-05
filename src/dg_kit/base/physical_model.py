@@ -1,3 +1,5 @@
+"""Containers for warehouse-oriented physical model metadata."""
+
 from __future__ import annotations
 
 from typing import Dict, List

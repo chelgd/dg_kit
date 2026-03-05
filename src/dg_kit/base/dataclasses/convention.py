@@ -1,3 +1,5 @@
+"""Dataclasses and protocols for convention rule definitions."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

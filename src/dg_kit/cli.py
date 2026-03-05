@@ -1,3 +1,9 @@
+"""Command-line entry points for ``dg_kit`` workflows.
+
+This module builds the argument parser, loads YAML configuration, and
+dispatches supported commands.
+"""
+
 from __future__ import annotations
 
 import argparse

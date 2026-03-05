@@ -1,3 +1,5 @@
+"""Dataclasses describing entities, attributes, identifiers, and relations."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

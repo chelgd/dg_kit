@@ -1,3 +1,9 @@
+"""Implementation of the ``dg_kit sync`` command.
+
+This module synchronizes the local logical model with the configured data
+catalog backend.
+"""
+
 from __future__ import annotations
 
 from typing import Any

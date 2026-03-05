@@ -1,3 +1,5 @@
+"""S3-backed artifact persistence for serialized ``dg_kit`` objects."""
+
 import json
 import boto3
 import pickle

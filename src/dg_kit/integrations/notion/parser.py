@@ -1,3 +1,5 @@
+"""Parsers for translating Notion pages into catalog dataclasses."""
+
 from __future__ import annotations
 
 from typing import Optional, List, Dict

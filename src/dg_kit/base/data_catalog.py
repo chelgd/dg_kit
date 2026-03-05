@@ -1,3 +1,9 @@
+"""Core abstractions and orchestration for data catalog synchronization.
+
+This module defines the catalog engine protocol and the in-memory catalog
+manager used by pull and sync commands.
+"""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -27,45 +33,88 @@ logger = logging.getLogger(__name__)
 
 
 class DataCatalogEngine(ABC):
+    """Define the storage interface for a data catalog backend."""
+
     @abstractmethod
     def pull_data_catalog(
         self,
     ) -> Tuple[
         Dict[str, DataCatalogRow], Dict[str, EntityPage | AttributePage | RelationPage]
     ]:
+        """Fetch the full catalog state from the backing store.
+
+        :returns: Indexed catalog content keyed by object identifier.
+        :rtype: tuple[dict[str, DataCatalogRow], dict[str, EntityPage | AttributePage | RelationPage]]
+        """
         raise NotImplementedError
 
     @abstractmethod
     def update_row(self, data_catalog_row: DataCatalogRow) -> None:
+        """Persist an updated catalog row.
+
+        :param data_catalog_row: Row metadata to update.
+        :type data_catalog_row: DataCatalogRow
+        """
         raise NotImplementedError
 
     @abstractmethod
     def update_page(
         self, data_unit_page: EntityPage | AttributePage | RelationPage
     ) -> None:
+        """Persist an updated data unit page.
+
+        :param data_unit_page: Page payload to update.
+        :type data_unit_page: EntityPage | AttributePage | RelationPage
+        """
         raise NotImplementedError
 
     @abstractmethod
     def add_page(
         self, data_unit_page: EntityPage | AttributePage | RelationPage
     ) -> None:
+        """Create a new data unit page in the backing store.
+
+        :param data_unit_page: Page payload to create.
+        :type data_unit_page: EntityPage | AttributePage | RelationPage
+        """
         raise NotImplementedError
 
     @abstractmethod
     def add_row(self, data_catalog_row: DataCatalogRow) -> ObjectReference:
+        """Create a new catalog row.
+
+        :param data_catalog_row: Row metadata to create.
+        :type data_catalog_row: DataCatalogRow
+        :returns: Reference to the created remote object.
+        :rtype: ObjectReference
+        """
         raise NotImplementedError
 
     @abstractmethod
     def delete_by_id(self, id: str) -> None:
+        """Delete a catalog object by identifier.
+
+        :param id: Catalog object identifier.
+        :type id: str
+        """
         raise NotImplementedError
 
 
 class DataCatalog:
+    """Manage a locally cached view of the data catalog."""
+
     def __init__(
         self,
         engine: DataCatalogEngine,
         config: Dict,
     ):
+        """Initialize the catalog and load the cached or remote state.
+
+        :param engine: Backend engine used for persistence operations.
+        :type engine: DataCatalogEngine
+        :param config: Project configuration containing catalog settings.
+        :type config: dict
+        """
         self.engine = engine
         self.config = config
         self.artifact_path = Path(
@@ -78,36 +127,67 @@ class DataCatalog:
                 self.indexed_catalog: IndexedCatalog = self.load_from_local()
             except Exception:
                 logger.error(
-                    "Couldn't initiate indexed catalog localy from {self.artifact_path}. Pulling catalog from remote."
+                    f"Couldn't initiate indexed catalog localy from {self.artifact_path}. Pulling catalog from remote."
                 )
                 self.pull_data_catalog()
         else:
             logger.info(
-                "Couldn't find indexed catalog localy at {self.artifact_path}. Pulling catalog from remote."
+                f"Couldn't find indexed catalog localy at {self.artifact_path}. Pulling catalog from remote."
             )
             self.pull_data_catalog()
 
     def pull_data_catalog(self):
+        """Refresh the local cache from the remote catalog backend."""
         self.indexed_catalog = self.engine.pull_data_catalog()
         self.save_to_local()
 
     def get_row_by_id(self, id: str) -> DataCatalogRow:
+        """Return a catalog row by identifier.
+
+        :param id: Catalog object identifier.
+        :type id: str
+        :returns: Matching row if present.
+        :rtype: DataCatalogRow
+        """
         return self.indexed_catalog.row_by_id.get(id)
 
     def get_page_by_id(self, id: str) -> Entity | Attribute | Relation:
+        """Return a catalog page by identifier.
+
+        :param id: Catalog object identifier.
+        :type id: str
+        :returns: Matching page if present.
+        :rtype: Entity | Attribute | Relation
+        """
         return self.indexed_catalog.page_by_id.get(id)
 
     def update_row(self, data_catalog_row: DataCatalogRow) -> None:
+        """Update a row in memory, remotely, and in the local checkpoint.
+
+        :param data_catalog_row: Row metadata to persist.
+        :type data_catalog_row: DataCatalogRow
+        """
         self.indexed_catalog.row_by_id[data_catalog_row.id] = data_catalog_row
         self.engine.update_row(data_catalog_row)
         self.save_to_local()
 
     def update_page(self, page: EntityPage | AttributePage | RelationPage) -> None:
+        """Update a page in memory, remotely, and in the local checkpoint.
+
+        :param page: Page payload to persist.
+        :type page: EntityPage | AttributePage | RelationPage
+        """
         self.indexed_catalog.page_by_id[page.id] = page
         self.engine.update_page(page)
         self.save_to_local()
 
     def add_page(self, page: EntityPage | AttributePage | RelationPage) -> None:
+        """Add a new page to the catalog.
+
+        :param page: Page payload to create.
+        :type page: EntityPage | AttributePage | RelationPage
+        :raises KeyError: If a page with the same identifier already exists.
+        """
         if page.id in self.indexed_catalog.page_by_id:
             raise KeyError(
                 f"Data unit page with id='{page.id}' already exists. Use update instead."
@@ -117,7 +197,15 @@ class DataCatalog:
         self.engine.add_page(page)
         self.save_to_local()
 
-    def add_row(self, raw_data_catalog_row: Dict) -> None:
+    def add_row(self, raw_data_catalog_row: Dict) -> ObjectReference:
+        """Add a new row to the catalog from raw row metadata.
+
+        :param raw_data_catalog_row: Raw row payload expected by the backend.
+        :type raw_data_catalog_row: dict
+        :returns: Reference to the created remote page.
+        :rtype: ObjectReference
+        :raises KeyError: If a row with the same identifier already exists.
+        """
         if raw_data_catalog_row["id"] in self.indexed_catalog.row_by_id:
             raise KeyError(
                 f"Data unit with id='{raw_data_catalog_row['id']}' already exists. Use update instead."
@@ -140,6 +228,11 @@ class DataCatalog:
         return page_reference
 
     def delete_by_id(self, id: str) -> None:
+        """Delete a row and page from the catalog by identifier.
+
+        :param id: Catalog object identifier.
+        :type id: str
+        """
         self.indexed_catalog.row_by_id.pop(id, None)
         self.indexed_catalog.page_by_id.pop(id, None)
         self.engine.delete_by_id(id)
@@ -149,6 +242,11 @@ class DataCatalog:
         self,
         LM: LogicalModel,
     ):
+        """Synchronize the catalog contents with the logical model.
+
+        :param LM: Logical model used as the source of truth.
+        :type LM: LogicalModel
+        """
         lm_ids = set(LM.all_units_by_id)
         row_ids = set(self.indexed_catalog.row_by_id)
         rows_and_lm_intersection = row_ids & lm_ids
@@ -448,14 +546,20 @@ class DataCatalog:
             else:
                 self.update_page(page)
 
-    def save_to_local(self):
+    def save_to_local(self) -> None:
+        """Serialize the indexed catalog to the local checkpoint file."""
         with open(
             f"{self.config['data_catalog']['dc_checkpoint_path']}/{self.config['name']}.pkl",
             "wb",
         ) as f:
             pickle.dump(self.indexed_catalog, f)
 
-    def load_from_local(self):
+    def load_from_local(self) -> IndexedCatalog:
+        """Load the indexed catalog from the local checkpoint file.
+
+        :returns: Deserialized indexed catalog.
+        :rtype: IndexedCatalog
+        """
         with open(
             f"{self.config['data_catalog']['dc_checkpoint_path']}/{self.config['name']}.pkl",
             "rb",

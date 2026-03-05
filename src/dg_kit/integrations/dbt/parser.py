@@ -1,3 +1,9 @@
+"""Parsers for dbt projects.
+
+This module reads dbt metadata and SQL models to construct physical model
+objects and dependency graphs.
+"""
+
 from __future__ import annotations
 
 import logging

@@ -1,3 +1,9 @@
+"""Notion-backed data catalog engine implementations.
+
+This module adapts the Notion API to the :class:`dg_kit.base.data_catalog.DataCatalogEngine`
+interface used by synchronization commands.
+"""
+
 from __future__ import annotations
 from typing import Dict, List
 

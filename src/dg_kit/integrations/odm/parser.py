@@ -1,3 +1,9 @@
+"""Parsers for ODM project exports.
+
+This module converts ODM XML content into logical, physical, and business
+information models used by ``dg_kit``.
+"""
+
 from datetime import datetime
 from pathlib import Path
 import xml.etree.ElementTree as ET

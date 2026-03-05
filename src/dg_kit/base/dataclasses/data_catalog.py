@@ -1,3 +1,5 @@
+"""Dataclasses used to represent indexed data catalog content."""
+
 from __future__ import annotations
 
 from typing import Tuple, Dict

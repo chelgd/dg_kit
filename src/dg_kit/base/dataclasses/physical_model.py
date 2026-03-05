@@ -1,3 +1,5 @@
+"""Dataclasses describing layers, tables, and columns."""
+
 from dataclasses import dataclass
 
 

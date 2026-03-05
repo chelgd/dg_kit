@@ -1,3 +1,5 @@
+"""Shared dataclass helpers and identifier utilities."""
+
 import hashlib
 
 

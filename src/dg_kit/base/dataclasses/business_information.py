@@ -1,6 +1,4 @@
-"""
-Docstring for dg_kit.base.dataclasses.business_information
-"""
+"""Dataclasses representing business contacts, teams, and documents."""
 
 from __future__ import annotations
 

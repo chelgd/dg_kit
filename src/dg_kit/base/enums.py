@@ -1,3 +1,5 @@
+"""Enumerations shared across conventions and data catalog models."""
+
 from enum import StrEnum
 
 

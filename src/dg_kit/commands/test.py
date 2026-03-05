@@ -1,3 +1,9 @@
+"""Implementation of the ``dg_kit test`` command.
+
+This module loads logical and physical models, applies configured
+convention rules, and reports validation breaches.
+"""
+
 from __future__ import annotations
 
 import logging
@@ -19,7 +25,16 @@ logger = logging.getLogger(__name__)
 def run(
     config: dict[str, Any],
     convention_config: dict[str, Any],
-) -> None:
+) -> int:
+    """Validate logical and physical model consistency against a convention.
+
+    :param config: Project configuration with model locations and version info.
+    :type config: dict[str, Any]
+    :param convention_config: Convention settings and rule definitions.
+    :type convention_config: dict[str, Any]
+    :returns: Process-style exit status where ``0`` means success.
+    :rtype: int
+    """
     issues: List[ConventionBreach] = []
 
     odm_project_path = Path(config.get("logical_model", {}).get("path"))
@@ -44,7 +59,7 @@ def run(
         if not unit.pm_map:
             issues.append(
                 ConventionBreach(
-                    severity=ConventionRuleSeverity.ERROR,
+                    severity=ConventionRuleSeverity(convention_config['rules']['lm_x_pm_consistency']['severity']),
                     message=f"Missing PM mapping for {unit.name}",
                 )
             )
@@ -70,7 +85,7 @@ def run(
             layer_name = PM.layers[pm_unit.layer_id].name
             issues.append(
                 ConventionBreach(
-                    severity=ConventionRuleSeverity.ERROR,
+                    severity=ConventionRuleSeverity(convention_config['rules']['lm_x_pm_consistency']['severity']),
                     message=f"This PM object is not used in LM: {layer_name}.{pm_unit.name}",
                 )
             )
@@ -88,7 +103,7 @@ def run(
             table_name = PM.tables[pm_unit.table_id].name
             issues.append(
                 ConventionBreach(
-                    severity=ConventionRuleSeverity.ERROR,
+                    severity=ConventionRuleSeverity(convention_config['rules']['lm_x_pm_consistency']['severity']),
                     message=f"This PM object is not used in LM: {layer_name}.{table_name}.{pm_unit.name}",
                 )
             )
