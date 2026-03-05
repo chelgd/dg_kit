@@ -7,7 +7,7 @@ convention rules, and reports validation breaches.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List
+from typing import Any, List
 
 
 from pathlib import Path
@@ -17,7 +17,6 @@ from dg_kit.base.convention import Convention, ConventionValidator
 from dg_kit.integrations.dbt.parser import DBTParser
 from dg_kit.integrations.odm.parser import ODMVersionedProjectParser
 
-from dg_kit.base.dataclasses.logical_model import Entity, Attribute, Relation
 
 logger = logging.getLogger(__name__)
 
@@ -53,60 +52,6 @@ def run(
     convention_validator = ConventionValidator(LM, PM, convention)
     issues += convention_validator.validate()
 
-    lm_objects_by_pm_id: Dict[str, List[Entity | Attribute | Relation]] = {}
-
-    for unit in LM.all_units_by_id.values():
-        if not unit.pm_map:
-            issues.append(
-                ConventionBreach(
-                    severity=ConventionRuleSeverity(convention_config['rules']['lm_x_pm_consistency']['severity']),
-                    message=f"Missing PM mapping for {unit.name}",
-                )
-            )
-            continue
-        else:
-            for pm_obj in LM.pm_objects_by_lm_id[unit.id]:
-                if pm_obj.id in lm_objects_by_pm_id:
-                    lm_objects_by_pm_id[pm_obj.id].append(unit.id)
-                else:
-                    lm_objects_by_pm_id[pm_obj.id] = [unit.id]
-
-    lm_mapping_layers = []
-
-    for layer in PM.layers.values():
-        if layer.name in convention_config["lm_mapping_layers"]:
-            lm_mapping_layers.append(layer.id)
-
-    for pm_unit in PM.tables.values():
-        if (
-            pm_unit.layer_id in lm_mapping_layers
-            and pm_unit.id not in lm_objects_by_pm_id
-        ):
-            layer_name = PM.layers[pm_unit.layer_id].name
-            issues.append(
-                ConventionBreach(
-                    severity=ConventionRuleSeverity(convention_config['rules']['lm_x_pm_consistency']['severity']),
-                    message=f"This PM object is not used in LM: {layer_name}.{pm_unit.name}",
-                )
-            )
-
-    for pm_unit in PM.columns.values():
-        if (
-            pm_unit.layer_id in lm_mapping_layers
-            and pm_unit.id not in lm_objects_by_pm_id
-        ):
-            layer_name = PM.layers[pm_unit.layer_id].name
-            if layer_name in convention_config["technical_fields"]:
-                technical_fields = convention_config["technical_fields"][layer_name]
-                if pm_unit.name in technical_fields:
-                    continue
-            table_name = PM.tables[pm_unit.table_id].name
-            issues.append(
-                ConventionBreach(
-                    severity=ConventionRuleSeverity(convention_config['rules']['lm_x_pm_consistency']['severity']),
-                    message=f"This PM object is not used in LM: {layer_name}.{table_name}.{pm_unit.name}",
-                )
-            )
 
     sys_exit_status = 0
 
