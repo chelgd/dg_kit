@@ -30,7 +30,6 @@ def _configure_logging(level: str) -> None:
 
 
 def _load_config(config_path: str | None = None) -> dict[str, Any]:
-    logger.info("Loading config from %s", config_path)
     path = Path(config_path)
 
     if not path.is_file():

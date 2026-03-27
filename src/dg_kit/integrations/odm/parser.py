@@ -8,12 +8,13 @@ from datetime import datetime
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
-from typing import Optional, Dict, Tuple
+from typing import Optional, Dict, Tuple, List
 
 from dg_kit.base.logical_model import LogicalModelsDatabase
 from dg_kit.base.business_information import BusinessInformationDatabase
 
 from dg_kit.base.dataclasses import id_generator
+from dg_kit.base.enums import ConventionRuleSeverity
 
 from dg_kit.base.physical_model import PhysicalModel
 from dg_kit.base.dataclasses.physical_model import (
@@ -26,6 +27,9 @@ from dg_kit.base.dataclasses.logical_model import (
     Entity,
     Attribute,
     Relation,
+)
+from dg_kit.base.dataclasses.convention import (
+    ConventionBreach,
 )
 
 from dg_kit.base.business_information import BusinessInformation
@@ -89,6 +93,8 @@ class ODMParser:
         self.emails_path = self.business_information_path / "email"
         self.urls_path = self.business_information_path / "url"
         self.parties_path = self.business_information_path / "party"
+
+        self.issues = []
 
         self.LM = ODMLogicalModel(self.model_name)
         self.BI = ODMBusinessInformation(self.model_name)
@@ -185,8 +191,12 @@ class ODMParser:
                 if nk in self.all_pm_objects_by_nk:
                     pm_objects_list.append(self.all_pm_objects_by_nk[nk])
                 else:
-                    # Need to implement parser level issues registry.
-                    print("mistake")
+                    self.issues.append(
+                        ConventionBreach(
+                            severity=ConventionRuleSeverity.WARNING,
+                            message=f"Wrong pm_map in Logical Model. There is no {nk} in Physical Model.",
+                        )
+                    )
 
         return tuple(pm_objects_list)
 
@@ -489,7 +499,6 @@ class ODMParser:
                         used_attributes.append(
                             self.LM.all_lm_units_by_odm_id[attr_elem.text]
                         )
-
                 entity_identifier = EntityIdentifier(
                     id=id_generator(name),
                     nk=name,
@@ -523,6 +532,7 @@ class ODMVersionedProjectParser:
 
         self.LMDatabse = LogicalModelsDatabase()
         self.BIDatabase = BusinessInformationDatabase()
+        self.parsing_issues: Dict[str, List[ConventionBreach]] = {}
 
     def parse_version(self, version: str, PM: PhysicalModel) -> None:
         odm_version_path = None
@@ -541,6 +551,8 @@ class ODMVersionedProjectParser:
 
         lm = parser.parse_lm()
         self.LMDatabse.register_logical_model(lm)
+
+        self.parsing_issues[version] = parser.issues
 
     def get_model(self, version: str) -> LogicalModel:
         return self.LMDatabse.logical_models[version]

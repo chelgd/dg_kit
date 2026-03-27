@@ -24,10 +24,9 @@ def run(
     dbt_project_path = Path(config.get("physical_model", {}).get("path"))
 
     dbt_parser = DBTParser(dbt_project_path, config["version"])
+    PM = dbt_parser.parse_pm()
 
     odm_project = ODMVersionedProjectParser(odm_project_path=odm_project_path)
-
-    PM = dbt_parser.parse_pm()
     odm_project.parse_version(config["version"], PM)
     LM = odm_project.get_model(config["version"])
 

@@ -67,6 +67,7 @@ class Convention:
         :returns: Decorator that registers the wrapped rule function.
         :rtype: ConventionRuleFn
         """
+
         def rule_registry(fn: ConventionRuleFn) -> ConventionRuleFn:
             self.rules.append(ConventionRule(name, severity, description, fn))
             return fn
@@ -180,7 +181,11 @@ class Convention:
             if not unit.pm_map:
                 issues.append(
                     ConventionBreach(
-                        severity=ConventionRuleSeverity(self.convention_config['rules']['lm_x_pm_consistency']['severity']),
+                        severity=ConventionRuleSeverity(
+                            self.convention_config["rules"]["lm_x_pm_consistency"][
+                                "severity"
+                            ]
+                        ),
                         message=f"Missing PM mapping for {unit.name}",
                     )
                 )
@@ -206,7 +211,11 @@ class Convention:
                 layer_name = PM.layers[pm_unit.layer_id].name
                 issues.append(
                     ConventionBreach(
-                        severity=ConventionRuleSeverity(self.convention_config['rules']['lm_x_pm_consistency']['severity']),
+                        severity=ConventionRuleSeverity(
+                            self.convention_config["rules"]["lm_x_pm_consistency"][
+                                "severity"
+                            ]
+                        ),
                         message=f"This PM object is not used in LM: {layer_name}.{pm_unit.name}",
                     )
                 )
@@ -218,18 +227,25 @@ class Convention:
             ):
                 layer_name = PM.layers[pm_unit.layer_id].name
                 if layer_name in self.convention_config["technical_fields"]:
-                    technical_fields = self.convention_config["technical_fields"][layer_name]
+                    technical_fields = self.convention_config["technical_fields"][
+                        layer_name
+                    ]
                     if pm_unit.name in technical_fields:
                         continue
                 table_name = PM.tables[pm_unit.table_id].name
                 issues.append(
                     ConventionBreach(
-                        severity=ConventionRuleSeverity(self.convention_config['rules']['lm_x_pm_consistency']['severity']),
+                        severity=ConventionRuleSeverity(
+                            self.convention_config["rules"]["lm_x_pm_consistency"][
+                                "severity"
+                            ]
+                        ),
                         message=f"This PM object is not used in LM: {layer_name}.{table_name}.{pm_unit.name}",
                     )
                 )
 
         return issues
+
 
 class ConventionValidator:
     """Run all configured convention rules against logical and physical models."""
@@ -256,9 +272,6 @@ class ConventionValidator:
         """
         issues: List[ConventionBreach] = []
 
-        logger.info(
-            f"Starting model validation according to convention: {self.convention.name}..."
-        )
         for rule in self.convention.rules:
             res = rule.fn(
                 self.lm,

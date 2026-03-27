@@ -34,16 +34,18 @@ def run(
     :returns: Process-style exit status where ``0`` means success.
     :rtype: int
     """
+
+    logger.info("Starting model validation according to convention...")
+
     issues: List[ConventionBreach] = []
 
     odm_project_path = Path(config.get("logical_model", {}).get("path"))
     dbt_project_path = Path(config.get("physical_model", {}).get("path"))
 
     dbt_parser = DBTParser(dbt_project_path, config["version"])
+    PM = dbt_parser.parse_pm()
 
     odm_project = ODMVersionedProjectParser(odm_project_path=odm_project_path)
-
-    PM = dbt_parser.parse_pm()
     odm_project.parse_version(config["version"], PM)
     LM = odm_project.get_model(config["version"])
 
@@ -51,7 +53,7 @@ def run(
 
     convention_validator = ConventionValidator(LM, PM, convention)
     issues += convention_validator.validate()
-
+    issues += odm_project.parsing_issues[config["version"]]
 
     sys_exit_status = 0
 
@@ -59,5 +61,8 @@ def run(
         getattr(logger, issue.severity)(issue.message)
         if issue.severity == ConventionRuleSeverity.ERROR:
             sys_exit_status = 1
+
+    if sys_exit_status == 0:
+        logger.info("Validation successful")
 
     return sys_exit_status
