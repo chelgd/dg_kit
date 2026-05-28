@@ -247,7 +247,12 @@ class DBTParser:
             else:
                 raise Exception(f"Unknown model reference in {str(model_sql_path)}")
 
-            self.PM.register_dependency(dependent, table_obj)
+            if isinstance(table_obj, Table):
+                self.PM.register_dependency(dependent, table_obj)
+            else:
+                logger.warning(
+                    f"Could not resolve ref to table '{table_name}' in {str(model_sql_path)}. This may lead to missing dependencies in the physical model."
+                )
 
         for m in _SOURCE_RE.finditer(text):
             table_name = m.group("table_name")

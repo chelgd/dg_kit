@@ -31,6 +31,11 @@ def _configure_logging(level: str) -> None:
 
 
 def _load_config(config_path: str | None = None) -> dict[str, Any]:
+    if config_path is None:
+        raise ValueError(
+            "No config path provided. Use --config or --convention to specify one."
+        )
+
     path = Path(config_path)
 
     if not path.is_file():
@@ -47,26 +52,22 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="dg_kit", description="Data Governance Toolkit CLI"
     )
-
     parser.add_argument(
         "--version",
         action="version",
         version=f"%(prog)s {version('dg_kit')}",
     )
-
     parser.add_argument(
         "--config",
         help=("Path to YAML config. If omitted, ./dg_kit.yml is used when present"),
         default=str(Path.cwd() / DEFAULT_CONFIG_FILE),
     )
-
     parser.add_argument(
         "--log-level",
         choices=LOG_LEVELS,
         default="INFO",
         help="Logging level for CLI output.",
     )
-
     command_parser = parser.add_subparsers(
         dest="command",
         help="Available commands",
@@ -75,29 +76,24 @@ def build_parser() -> argparse.ArgumentParser:
 
     # dg_kit test --convention ./my_convention.yml
     test = command_parser.add_parser("test", help="Test commands")
-
     test.add_argument(
         "--convention",
-        help=(
-            "Path to YAML config. If omitted, ./dg_kit.convention.yml is used when present"
-        ),
+        default=str(Path.cwd() / "dg_kit.convention.yml"),
+        help="Path to convention YAML config. Defaults to ./dg_kit.convention.yml.",
     )
 
     # dg_kit data-catalog pull/sync
     data_catalog = command_parser.add_parser(
         "data-catalog", help="Data catalog commands"
     )
-
-    data_catalog.add_argument(
-        "pull",
-        help=("Pull data catalog to local."),
+    data_catalog_subparsers = data_catalog.add_subparsers(
+        dest="data_catalog_command",
+        required=True,
     )
-
-    data_catalog.add_argument(
+    data_catalog_subparsers.add_parser("pull", help="Pull data catalog to local.")
+    data_catalog_subparsers.add_parser(
         "sync",
-        help=(
-            "Sync Logical Model, Business Information and Physical model with Data Catalog."
-        ),
+        help="Sync Logical Model, Business Information and Physical model with Data Catalog.",
     )
 
     return parser
@@ -113,15 +109,15 @@ def main(argv: list[str] | None = None) -> int:
 
     _configure_logging(args.log_level)
 
-    if args.command == "sync":
-        sys_exit_status = sync.run(config)
-
-    elif args.command == "test":
+    if args.command == "test":
         convention_config = _load_config(args.convention)
         sys_exit_status = test.run(config, convention_config)
 
-    elif args.command == "pull":
-        sys_exit_status = pull.run(config)
+    elif args.command == "data-catalog":
+        if args.data_catalog_command == "pull":
+            sys_exit_status = pull.run(config)
+        elif args.data_catalog_command == "sync":
+            sys_exit_status = sync.run(config)
 
     return sys_exit_status
 
