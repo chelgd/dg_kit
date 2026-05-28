@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+from importlib.metadata import version
 from pathlib import Path
 from typing import Any
 
@@ -17,7 +18,6 @@ from dg_kit.commands import test
 from dg_kit.commands.data_catalog import pull, sync
 
 DEFAULT_CONFIG_FILE = "dg_kit.yml"
-SUPPORTED_COMMANDS = ("test", "data-catalog")
 LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
 
 logger = logging.getLogger(__name__)
@@ -49,6 +49,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {version('dg_kit')}",
+    )
+
+    parser.add_argument(
         "--config",
         help=("Path to YAML config. If omitted, ./dg_kit.yml is used when present"),
         default=str(Path.cwd() / DEFAULT_CONFIG_FILE),
@@ -65,7 +71,6 @@ def build_parser() -> argparse.ArgumentParser:
         dest="command",
         help="Available commands",
         required=True,
-        choices=SUPPORTED_COMMANDS,
     )
 
     # dg_kit test --convention ./my_convention.yml
@@ -95,7 +100,7 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
 
-    return command_parser
+    return parser
 
 
 def main(argv: list[str] | None = None) -> int:
