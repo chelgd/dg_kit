@@ -13,10 +13,11 @@ from typing import Any
 
 import yaml
 
-from dg_kit.commands import sync, test, pull
+from dg_kit.commands import test
+from dg_kit.commands.data_catalog import pull, sync
 
 DEFAULT_CONFIG_FILE = "dg_kit.yml"
-SUPPORTED_COMMANDS = ("test", "sync", "pull")
+SUPPORTED_COMMANDS = ("test", "data-catalog")
 LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
 
 logger = logging.getLogger(__name__)
@@ -43,28 +44,55 @@ def _load_config(config_path: str | None = None) -> dict[str, Any]:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    command_parser = argparse.ArgumentParser(prog="dg_kit")
+    parser = argparse.ArgumentParser(
+        prog="dg_kit", description="Data Governance Toolkit CLI"
+    )
 
-    command_parser.add_argument("command", choices=SUPPORTED_COMMANDS)
-
-    command_parser.add_argument(
+    parser.add_argument(
         "--config",
         help=("Path to YAML config. If omitted, ./dg_kit.yml is used when present"),
         default=str(Path.cwd() / DEFAULT_CONFIG_FILE),
     )
 
-    command_parser.add_argument(
+    parser.add_argument(
+        "--log-level",
+        choices=LOG_LEVELS,
+        default="INFO",
+        help="Logging level for CLI output.",
+    )
+
+    command_parser = parser.add_subparsers(
+        dest="command",
+        help="Available commands",
+        required=True,
+        choices=SUPPORTED_COMMANDS,
+    )
+
+    # dg_kit test --convention ./my_convention.yml
+    test = command_parser.add_parser("test", help="Test commands")
+
+    test.add_argument(
         "--convention",
         help=(
             "Path to YAML config. If omitted, ./dg_kit.convention.yml is used when present"
         ),
     )
 
-    command_parser.add_argument(
-        "--log-level",
-        choices=LOG_LEVELS,
-        default="INFO",
-        help="Logging level for CLI output.",
+    # dg_kit data-catalog pull/sync
+    data_catalog = command_parser.add_parser(
+        "data-catalog", help="Data catalog commands"
+    )
+
+    data_catalog.add_argument(
+        "pull",
+        help=("Pull data catalog to local."),
+    )
+
+    data_catalog.add_argument(
+        "sync",
+        help=(
+            "Sync Logical Model, Business Information and Physical model with Data Catalog."
+        ),
     )
 
     return command_parser
@@ -75,9 +103,10 @@ def main(argv: list[str] | None = None) -> int:
 
     parser = build_parser()
     args = parser.parse_args(argv)
-    _configure_logging(args.log_level)
 
     config = _load_config(args.config)
+
+    _configure_logging(args.log_level)
 
     if args.command == "sync":
         sys_exit_status = sync.run(config)

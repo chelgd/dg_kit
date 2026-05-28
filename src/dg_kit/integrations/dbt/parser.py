@@ -227,7 +227,9 @@ class DBTParser:
         """
         dependent = self.PM.all_tables_by_nk.get(f"{layer_name}.{model_name}")
         if not isinstance(dependent, Table):
-            raise Exception("Dependent object should be of class Table.")
+            raise Exception(
+                f"Dependent object should be of class Table. Got {type(dependent)} for {layer_name}.{model_name}"
+            )
 
         text = model_sql_path.read_text(encoding="utf-8")
 
@@ -267,6 +269,7 @@ class DBTParser:
             name=self.default_schema,
             is_landing=False,
         )
+
         self.PM.register_layer(layer_obj)
 
         for seed_yml_file in self.seeds_path.glob("*.yml"):
@@ -274,6 +277,8 @@ class DBTParser:
 
         # 2) parse model definitions
         for project in self.dbt_project_conf["models"]:
+            if "+" in project:
+                continue
             for layer_name in self.dbt_project_conf["models"][project]:
                 layer_obj = Layer(
                     id=id_generator(layer_name),
