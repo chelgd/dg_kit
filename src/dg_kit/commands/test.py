@@ -14,7 +14,7 @@ from pathlib import Path
 from dg_kit.base.enums import ConventionRuleSeverity
 from dg_kit.base.dataclasses.convention import ConventionBreach
 from dg_kit.base.convention import Convention, ConventionValidator
-from dg_kit.integrations.dbt.parser import DBTParser
+from dg_kit.commands.common import parse_physical_model
 from dg_kit.integrations.odm.parser import ODMVersionedProjectParser
 
 
@@ -40,10 +40,8 @@ def run(
     issues: List[ConventionBreach] = []
 
     odm_project_path = Path(config.get("logical_model", {}).get("path"))
-    dbt_project_path = Path(config.get("physical_model", {}).get("path"))
 
-    dbt_parser = DBTParser(dbt_project_path, config["version"])
-    PM = dbt_parser.parse_pm()
+    PM = parse_physical_model(config)
 
     odm_project = ODMVersionedProjectParser(odm_project_path=odm_project_path)
     odm_project.parse_version(config["version"], PM)
