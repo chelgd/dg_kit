@@ -85,6 +85,12 @@ logical_model:
   path: ./metadata/odm_versions
 physical_model:
   path: ./warehouse/dbt_project
+  # Optional: dbt `sources` YAML kept outside models/ (files or directories).
+  source_paths:
+    - ./warehouse/sources
+  # Optional: .gitignore-style patterns, relative to the dbt project.
+  ignore:
+    - models/legacy/
 data_catalog:
   dc_checkpoint_path: ./.artifacts
   row_property_mapping:
@@ -107,6 +113,22 @@ data_catalog:
     source_entity_reference: Source entity
     target_entity_reference: Target entity
 ```
+
+Relative paths are resolved from the directory `dg_kit` runs in.
+
+`physical_model` options:
+
+- `source_paths`: extra files or directories with dbt `sources` YAML that live
+  outside `models/`, for example when a build step copies them into the project.
+  Directories are searched recursively for `*.yml`. By default only
+  `models/*.yml` is read for sources.
+- `ignore`: patterns with `.gitignore` syntax (`**`, trailing `/`, `!`
+  negation), matched against paths relative to the dbt project. Matching model,
+  seed and source YAML and model SQL files are not parsed. Ignore a model's
+  `.yml` and `.sql` together, e.g. with a directory pattern.
+
+Columns without `data_type` or `description` are parsed with empty values;
+columns without `data_type` are reported as warnings.
 
 `dg_kit.convention.yml`:
 
@@ -144,7 +166,12 @@ Build physical model from dbt:
 from pathlib import Path
 from dg_kit.integrations.dbt.parser import DBTParser
 
-pm = DBTParser(Path("path/to/dbt_project"), version="v1").parse_pm()
+pm = DBTParser(
+    Path("path/to/dbt_project"),
+    version="v1",
+    source_paths=[Path("path/to/sources")],  # optional
+    ignore=["models/legacy/"],  # optional
+).parse_pm()
 print(pm.version, len(pm.tables))
 ```
 
